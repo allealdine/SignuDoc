@@ -1,12 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { ZodError } from "zod";
-
-import { describeSignerCorrectedEvent } from "./services/audit.ts";
 import {
   correctSentSignerSchema,
   missingCorrectedSignerFieldsMessage,
 } from "./schemas/signer.ts";
+import { describeSignerCorrectedEvent } from "./services/audit.ts";
 
 test("a signer correction needs a name, an email address, or both", () => {
   assert.deepEqual(correctSentSignerSchema.parse({ name: "Riley Recipient" }), {

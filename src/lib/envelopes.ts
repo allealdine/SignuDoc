@@ -1,7 +1,12 @@
 import { randomUUID } from "node:crypto";
 
-import { type Branding } from "./branding.ts";
+import type { Branding } from "./branding.ts";
 import { removeUnclaimedEnvelopeCertificates } from "./certificate-cleanup.ts";
+import {
+  buildDashboardContextLine,
+  buildDashboardStatusLabel,
+  formatDashboardDate,
+} from "./dashboard-labels.ts";
 import {
   type DbExecutor,
   type DbPool,
@@ -10,6 +15,8 @@ import {
   queryOne,
   withTransaction,
 } from "./db/connection.ts";
+import { hasEmbedOrigins, isEmbeddedEnvelope } from "./embedding.ts";
+import { formatEnvelopeOwner } from "./envelope-access.ts";
 import {
   deadlineFromDays,
   formatDeadline,
@@ -21,58 +28,59 @@ import {
   describeChoiceFieldProblem,
   findChoiceFieldProblem,
 } from "./field-choices.ts";
-import { idSchema } from "./schemas/common.ts";
-import {
-  changeDeadlineResponseSchema,
-  changeRemindersResponseSchema,
-  copyEnvelopeResponseSchema,
-  envelopeListFiltersSchema,
-  type AuditEventRecord,
-  type ChangeDeadlineResponse,
-  type ChangeRemindersResponse,
-  type CopyEnvelopeResponse,
-  envelopeCreateResponseSchema,
-  envelopePageSchema,
-  envelopeRecordSchema,
-  sendEnvelopeResponseSchema,
-  voidEnvelopeResponseSchema,
-  type CreateEnvelopeResponse,
-  type EnvelopeListFilters,
-  type EnvelopePageRecord,
-  type EnvelopeRecord,
-  type SendEnvelopeResponse,
-  type VoidEnvelopeResponse,
-} from "./schemas/envelope.ts";
-import {
-  fieldPlacementSchema,
-  fieldRecordSchema,
-  replaceFieldsResponseSchema,
-  replaceFieldsSchema,
-  type FieldRecord,
-  type ReplaceFieldsResponse,
-} from "./schemas/field.ts";
-import {
-  correctSentSignerResponseSchema,
-  correctSentSignerSchema,
-  duplicateCopyRecipientEmailMessage,
-  duplicateSignerEmailMessage,
-  replaceSignersResponseSchema,
-  replaceSignersSchema,
-  signerRecordSchema,
-  type CopyRecipientRecord,
-  type CorrectSentSignerResponse,
-  type ReplaceSignersResponse,
-  type SignerRecord,
-} from "./schemas/signer.ts";
+import { formatMessage } from "./i18n/format.ts";
+import { getMessages } from "./i18n/messages.ts";
+import { DEFAULT_LOCALE, isLocale, type Locale } from "./i18n/types.ts";
 import {
   describePart11SignerProblem,
   findSignerAccounts,
   parseSignatureMeaning,
   signatureMeaningLabel,
 } from "./part11.ts";
-import { getBranding, readStoredSettings } from "./settings.ts";
-import { type SignatureMeaning } from "./types/domain.ts";
-import { importPdfDocument } from "./services/document-import.ts";
+import { PERMITTED_USE_VERSION } from "./permitted-uses.ts";
+import { idSchema } from "./schemas/common.ts";
+import {
+  type AuditEventRecord,
+  type ChangeDeadlineResponse,
+  type ChangeRemindersResponse,
+  type CopyEnvelopeResponse,
+  type CreateEnvelopeResponse,
+  changeDeadlineResponseSchema,
+  changeRemindersResponseSchema,
+  copyEnvelopeResponseSchema,
+  type EnvelopeListFilters,
+  type EnvelopePageRecord,
+  type EnvelopeRecord,
+  envelopeCreateResponseSchema,
+  envelopeListFiltersSchema,
+  envelopePageSchema,
+  envelopeRecordSchema,
+  type SendEnvelopeResponse,
+  sendEnvelopeResponseSchema,
+  type VoidEnvelopeResponse,
+  voidEnvelopeResponseSchema,
+} from "./schemas/envelope.ts";
+import {
+  type FieldRecord,
+  fieldPlacementSchema,
+  fieldRecordSchema,
+  type ReplaceFieldsResponse,
+  replaceFieldsResponseSchema,
+  replaceFieldsSchema,
+} from "./schemas/field.ts";
+import {
+  type CopyRecipientRecord,
+  type CorrectSentSignerResponse,
+  correctSentSignerResponseSchema,
+  correctSentSignerSchema,
+  duplicateCopyRecipientEmailMessage,
+  duplicateSignerEmailMessage,
+  type ReplaceSignersResponse,
+  replaceSignersResponseSchema,
+  replaceSignersSchema,
+  type SignerRecord,
+  signerRecordSchema,
+} from "./schemas/signer.ts";
 import {
   describeSignerCorrectedEvent,
   listAuditEventsForEnvelope,
@@ -80,15 +88,15 @@ import {
   recordAuditEvent,
   recordEmailSent,
 } from "./services/audit.ts";
+import { importPdfDocument } from "./services/document-import.ts";
 import {
   createEmailService,
   EMAIL_NOT_CONNECTED_MESSAGE,
+  type EmailService,
   isEmailNotConnectedError,
   resolveEmailAddresses,
-  type EmailService,
 } from "./services/email.ts";
 import { withUserEmailLegalFooter } from "./services/email-legal-footer.ts";
-import { buildSigningInvitationEmail } from "./services/signing-invitation-email.ts";
 import {
   findTypedValueTooLongForField,
   loadInstallSealer,
@@ -96,18 +104,19 @@ import {
   storeRecipientEnvelopeCertificatePdf,
 } from "./services/pdf-finalize.ts";
 import {
-  issueSigningLink,
+  formatReminderAvailableAt,
+  getManualNudgeAvailableAt,
+  isManualNudgeAvailable,
+} from "./services/reminders.ts";
+import { buildSigningInvitationEmail } from "./services/signing-invitation-email.ts";
+import {
   type IssuedSigningLink,
+  issueSigningLink,
 } from "./services/signing-links.ts";
 import {
-  buildEnvelopeCertificateKey,
-  buildEnvelopeOriginalPdfKey,
-  buildEnvelopeThumbnailKey,
-} from "./services/storage-keys.ts";
-import {
   configuredSigningProvider,
-  signingProviderById,
   type SigningProviderId,
+  signingProviderById,
 } from "./services/signing-providers.ts";
 import {
   createStorageService,
@@ -116,18 +125,17 @@ import {
   type StorageService,
 } from "./services/storage.ts";
 import {
+  buildEnvelopeCertificateKey,
+  buildEnvelopeOriginalPdfKey,
+  buildEnvelopeThumbnailKey,
+} from "./services/storage-keys.ts";
+import {
   assertThumbnailImage,
   buildThumbnailEtag,
   matchesEtag,
   THUMBNAIL_CONTENT_TYPE,
 } from "./services/thumbnails.ts";
-import {
-  formatReminderAvailableAt,
-  getManualNudgeAvailableAt,
-  isManualNudgeAvailable,
-} from "./services/reminders.ts";
-import { formatEnvelopeOwner } from "./envelope-access.ts";
-import { PERMITTED_USE_VERSION } from "./permitted-uses.ts";
+import { getBranding, readStoredSettings } from "./settings.ts";
 import { hashAccessCode } from "./signer-checks.ts";
 import {
   describeSignerLimit,
@@ -138,11 +146,11 @@ import {
   hasSharedSigningStep,
   joinNames,
   normalizeSigningSteps,
-  signingStepOf,
   SigningStepError,
+  signingStepOf,
 } from "./signing-steps.ts";
+import type { SignatureMeaning } from "./types/domain.ts";
 import { escapeHtml } from "./utils/html.ts";
-import { hasEmbedOrigins, isEmbeddedEnvelope } from "./embedding.ts";
 import { releaseSentWebhook } from "./webhooks/outbox.ts";
 
 type CreateDraftEnvelopeOptions = {
@@ -169,6 +177,8 @@ type SendDraftEnvelopeInput = {
   delivery?: "email" | "embedded";
   /** How many days signers get. The default applies when left out. */
   expiresInDays?: number;
+  /** Language of the invitations sent when the draft is sent. */
+  locale?: Locale;
   /** Days between automatic reminders. Null or left out means none. */
   reminderIntervalDays?: number | null;
   /**
@@ -261,6 +271,7 @@ type SignerRow = {
   id: string;
   lastNotifiedAt: number | null;
   lastNudgedAt: number | null;
+  locale: string | null;
   name: string;
   signatureMeaning: SignatureMeaning | null;
   signedAt: number | null;
@@ -1258,6 +1269,7 @@ async function listSignersForEnvelopeIds(
         turn_started_at AS "turnStartedAt",
         last_notified_at AS "lastNotifiedAt",
         last_nudged_at AS "lastNudgedAt",
+        locale,
         signed_at AS "signedAt",
         declined_at AS "declinedAt",
         decline_reason AS "declineReason",
@@ -1474,78 +1486,6 @@ async function listFieldsForEnvelopeIds(
   return fieldsByEnvelope;
 }
 
-function buildDashboardContextLine(
-  envelope: EnvelopeRecord,
-  signers: readonly PersistedSignerRecord[],
-  fields: readonly PersistedFieldRecord[],
-): string {
-  if (envelope.status === "completed") {
-    const sentTo = signers.map((signer) => signer.email).join(", ");
-    return sentTo.length > 0 ? `Sent to: ${sentTo}` : "Sent to: —";
-  }
-
-  if (envelope.status === "sent") {
-    // Everyone whose turn it is: one signer, or all of a step that signs
-    // at the same time.
-    const waiting = signers.filter((signer) => signer.status === "notified");
-    const currentSigners =
-      waiting.length > 0
-        ? waiting
-        : signers.filter((signer) => signer.status === "pending").slice(0, 1);
-    const waitingOn =
-      currentSigners.length > 0
-        ? currentSigners.map((signer) => signer.email).join(", ")
-        : "—";
-
-    if (isEnvelopeExpired(envelope, Math.floor(Date.now() / 1000))) {
-      return `Expired ${formatShortDate(envelope.expiresAt!)} · was waiting on: ${waitingOn}`;
-    }
-
-    return `Waiting on: ${waitingOn}`;
-  }
-
-  if (envelope.status === "declined") {
-    const declinedSigner = signers.find(
-      (signer) => signer.status === "declined",
-    );
-    return `Declined by: ${declinedSigner?.email ?? "—"}`;
-  }
-
-  if (envelope.status === "voided") {
-    return `Voided on ${formatShortDate(envelope.voidedAt ?? envelope.updatedAt)}`;
-  }
-
-  return `${pluralize(signers.length, "signer")} · ${pluralize(fields.length, "field")} placed`;
-}
-
-const dashboardStatusLabels: Record<EnvelopeRecord["status"], string> = {
-  completed: "Completed",
-  declined: "Declined",
-  draft: "Draft",
-  sent: "Sent",
-  voided: "Voided",
-};
-
-function buildDashboardStatusLabel(
-  envelope: EnvelopeRecord,
-  signers: readonly PersistedSignerRecord[],
-): string {
-  if (isEnvelopeExpired(envelope, Math.floor(Date.now() / 1000))) {
-    return "Expired";
-  }
-
-  // With one signer "Sent" says it all. With several, say how many are done.
-  if (envelope.status === "sent" && signers.length > 1) {
-    const signedCount = signers.filter(
-      (signer) => signer.status === "signed",
-    ).length;
-
-    return `${String(signedCount)} of ${String(signers.length)} signed`;
-  }
-
-  return dashboardStatusLabels[envelope.status];
-}
-
 function buildFieldsBySigner(
   fields: readonly FieldRecord[],
 ): Map<string, FieldRecord[]> {
@@ -1648,29 +1588,35 @@ function getMissingSignatureSigner(
   );
 }
 
-function buildVoidNotificationEmail(input: {
+export function buildVoidNotificationEmail(input: {
   branding: Branding;
   envelopeId: string;
   envelopeTitle: string;
+  locale: Locale;
   senderName: string;
   signerEmail: string;
   signerName: string;
   /** The signer had already signed, so the document they signed won't be completed. */
   signerSigned?: boolean;
 }) {
-  const subject = `"${input.envelopeTitle}" was voided by ${input.senderName}`;
+  const copy = getMessages(input.locale).email.voidNotification;
+  const values = {
+    productName: input.branding.productName,
+    senderName: input.senderName,
+    title: input.envelopeTitle,
+  };
+  const subject = formatMessage(copy.subject, values);
   const outcome = input.signerSigned
-    ? "The signing process has been canceled, so the document you signed will not be completed. No further action is needed."
-    : "The signing process has been canceled. No further action is needed.";
-  const textBody = [
-    `Hi ${input.signerName},`,
-    "",
-    `${input.senderName} voided "${input.envelopeTitle}" in ${input.branding.productName}.`,
-    outcome,
-  ].join("\n");
+    ? copy.outcomeSigned
+    : copy.outcomeUnsigned;
+  const greeting = formatMessage(copy.greeting, {
+    signerName: input.signerName,
+  });
+  const body = formatMessage(copy.body, values);
+  const textBody = [greeting, "", body, outcome].join("\n");
   const htmlBody = [
-    `<p>Hi ${escapeHtml(input.signerName)},</p>`,
-    `<p>${escapeHtml(input.senderName)} voided &ldquo;${escapeHtml(input.envelopeTitle)}&rdquo; in ${escapeHtml(input.branding.productName)}.</p>`,
+    `<p>${escapeHtml(greeting)}</p>`,
+    `<p>${escapeHtml(body)}</p>`,
     `<p>${escapeHtml(outcome)}</p>`,
   ].join("");
   const legalFooter = withUserEmailLegalFooter(
@@ -1679,6 +1625,8 @@ function buildVoidNotificationEmail(input: {
       textBody,
     },
     input.branding,
+    process.env,
+    input.locale,
   );
 
   return {
@@ -1910,8 +1858,9 @@ export async function listEnvelopesForUser(
   userId: string,
   filters: Partial<EnvelopeListFilters> = {},
   database: DbExecutor = getDb(),
+  locale: Locale = DEFAULT_LOCALE,
 ): Promise<DashboardEnvelopePage> {
-  return listEnvelopes(userId, filters, database);
+  return listEnvelopes(userId, filters, database, undefined, locale);
 }
 
 /**
@@ -1923,8 +1872,9 @@ export async function listAllEnvelopesForAdmin(
   adminUserId: string,
   filters: Partial<EnvelopeListFilters> = {},
   database: DbExecutor = getDb(),
+  locale: Locale = DEFAULT_LOCALE,
 ): Promise<DashboardEnvelopePage> {
-  return listEnvelopes(null, filters, database, adminUserId);
+  return listEnvelopes(null, filters, database, adminUserId, locale);
 }
 
 async function listEnvelopes(
@@ -1932,6 +1882,7 @@ async function listEnvelopes(
   filters: Partial<EnvelopeListFilters>,
   database: DbExecutor,
   adminUserId?: string,
+  locale: Locale = DEFAULT_LOCALE,
 ): Promise<DashboardEnvelopePage> {
   const parsedFilters = envelopeListFiltersSchema.parse(filters);
   const values: unknown[] =
@@ -2053,8 +2004,13 @@ async function listEnvelopes(
               : "Unknown sender",
           }
         : {}),
-      contextLine: buildDashboardContextLine(envelope, signers, fields),
-      createdAtLabel: formatShortDate(envelope.createdAt),
+      contextLine: buildDashboardContextLine(
+        envelope,
+        signers,
+        fields.length,
+        locale,
+      ),
+      createdAtLabel: formatDashboardDate(envelope.createdAt, locale),
       expired: isEnvelopeExpired(envelope, Math.floor(Date.now() / 1000)),
       id: envelope.id,
       // The search on the server matches copy recipients too.
@@ -2065,7 +2021,7 @@ async function listEnvelopes(
         ...(sender ? [sender] : []),
       ].map((recipient) => recipient.email),
       status: envelope.status,
-      statusLabel: buildDashboardStatusLabel(envelope, signers),
+      statusLabel: buildDashboardStatusLabel(envelope, signers, locale),
       title: envelope.title,
     };
   });
@@ -3032,7 +2988,8 @@ export async function sendDraftEnvelope(
               signing_token_expires_at = $2,
               turn_started_at = $3,
               last_notified_at = $4,
-              updated_at = $5
+              updated_at = $5,
+              locale = $8
             WHERE id = $6
               AND envelope_id = $7
           `,
@@ -3044,6 +3001,7 @@ export async function sendDraftEnvelope(
             sentAt,
             signer.id,
             envelopeId,
+            input.locale ?? "en",
           ],
         );
 
@@ -3141,6 +3099,7 @@ export async function sendDraftEnvelope(
             branding,
             envelopeTitle: envelope.title,
             expiresAt,
+            locale: input.locale,
             senderName: input.senderName,
             signerEmail: firstSigner.email,
             signerName: firstSigner.name,
@@ -3245,6 +3204,7 @@ export async function sendDraftEnvelope(
               branding,
               envelopeTitle: envelope.title,
               expiresAt,
+              locale: input.locale,
               senderName: input.senderName,
               signerEmail: signer.email,
               signerName: signer.name,
@@ -3514,6 +3474,7 @@ export async function correctSentEnvelopeSigner(
       emailCodeHash: string | null;
       emailCodeSentAt: number | null;
       lastNotifiedAt: number | null;
+      locale: string | null;
       name: string;
       role: string;
       signOrder: number;
@@ -3532,6 +3493,7 @@ export async function correctSentEnvelopeSigner(
           email_code_hash AS "emailCodeHash",
           email_code_sent_at AS "emailCodeSentAt",
           last_notified_at AS "lastNotifiedAt",
+          locale,
           name,
           role,
           sign_order AS "signOrder",
@@ -3689,6 +3651,7 @@ export async function correctSentEnvelopeSigner(
             branding,
             envelopeTitle: envelope.title,
             expiresAt: envelope.expiresAt,
+            locale: isLocale(signer.locale) ? signer.locale : DEFAULT_LOCALE,
             senderName: context.senderName,
             signerEmail: nextEmail,
             signerName: nextName,
@@ -4132,6 +4095,7 @@ async function voidSentEnvelopeOnce(
             branding,
             envelopeId,
             envelopeTitle: envelope.title,
+            locale: isLocale(signer.locale) ? signer.locale : DEFAULT_LOCALE,
             senderName: input.senderName,
             signerEmail: signer.email,
             signerName: signer.name,

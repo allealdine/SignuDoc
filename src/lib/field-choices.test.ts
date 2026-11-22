@@ -3,9 +3,9 @@ import test from "node:test";
 
 import {
   countAnswerableFields,
+  DROPDOWN_ENTRY_MESSAGE,
   describeChoiceFieldProblem,
   describeEntryProblem,
-  DROPDOWN_ENTRY_MESSAGE,
   findChoiceFieldProblem,
   isNumberEntry,
   judgeRadioGroups,

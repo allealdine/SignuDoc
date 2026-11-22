@@ -16,8 +16,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { ReviewEnvelopeData } from "@/lib/envelopes";
+import { formatMessage } from "@/lib/i18n/format.ts";
+import type { Messages } from "@/lib/i18n/locales/en.ts";
+import { useMessages } from "@/lib/i18n/messages-provider.tsx";
+import { formatReminderIntervalMessage } from "@/lib/i18n/reminder-labels.ts";
 import { PERMITTED_USE_PATH } from "@/lib/permitted-uses";
-import { formatReminderInterval } from "@/lib/services/reminders";
 import {
   DEFAULT_ENVELOPE_DEADLINE_DAYS,
   DEFAULT_ENVELOPE_REMINDER_DAYS,
@@ -26,9 +29,10 @@ import {
 } from "@/lib/types/domain";
 import { getSignerPalette } from "./signer-palette";
 
-const envelopeSteps = ["Upload", "Signers", "Place fields", "Review"];
 const redirectDelayMs = 1200;
-const defaultSendErrorMessage = "Failed to send. Please try again.";
+
+type ReviewCopy = Messages["envelope"]["review"];
+type SignatureCopy = ReviewCopy["signature"];
 
 type ReviewShellProps = {
   envelopeId: string;
@@ -72,19 +76,23 @@ type SendPhase = "error" | "idle" | "sending";
 
 type SignatureLevel = "advanced" | "qualified" | "simple";
 
-function describeSignatureLevel(level: SignatureLevel, providerName: string) {
+function describeSignatureLevel(
+  level: SignatureLevel,
+  providerName: string,
+  copy: SignatureCopy,
+) {
   switch (level) {
     case "advanced":
-      return `Advanced electronic signatures through ${providerName}`;
+      return formatMessage(copy.advanced, { providerName });
     case "qualified":
-      return `Qualified electronic signatures through ${providerName}`;
+      return formatMessage(copy.qualified, { providerName });
     default:
-      return "SignuDoc signatures";
+      return copy.simple;
   }
 }
 
-function buildSuccessMessage(firstSignerName: string) {
-  return `Envelope sent. ${firstSignerName} has been notified.`;
+function buildSuccessMessage(firstSignerName: string, copy: ReviewCopy) {
+  return formatMessage(copy.notice.sent, { name: firstSignerName });
 }
 
 export function ReviewShell({
@@ -105,6 +113,8 @@ export function ReviewShell({
   const [sendPhase, setSendPhase] = useState<SendPhase>("idle");
   const [sendError, setSendError] = useState<string | null>(null);
   const sendTimeoutRef = useRef<number | null>(null);
+  const { messages } = useMessages();
+  const copy = messages.envelope.review;
 
   useEffect(() => {
     return () => {
@@ -163,23 +173,25 @@ export function ReviewShell({
       } | null;
 
       if (!response.ok) {
-        setSendError(payload?.error ?? defaultSendErrorMessage);
+        setSendError(payload?.error ?? copy.error.sendFailed);
         setSendPhase("error");
         return;
       }
 
       const notifiedSignerName =
-        payload?.notifiedSignerName?.trim() || firstSigner?.name || "Signer 1";
+        payload?.notifiedSignerName?.trim() ||
+        firstSigner?.name ||
+        formatMessage(copy.signingOrder.signer, { order: 1 });
       const redirectPath = payload?.redirectPath || `/envelopes/${envelopeId}`;
 
       setIsConfirmationOpen(false);
-      setNotice(buildSuccessMessage(notifiedSignerName));
+      setNotice(buildSuccessMessage(notifiedSignerName, copy));
       setSendPhase("idle");
       sendTimeoutRef.current = window.setTimeout(() => {
         window.location.assign(redirectPath);
       }, redirectDelayMs);
     } catch {
-      setSendError(defaultSendErrorMessage);
+      setSendError(copy.error.sendFailed);
       setSendPhase("error");
     }
   }
@@ -188,21 +200,21 @@ export function ReviewShell({
     return (
       <div className="space-y-5">
         <PageHeader
-          description="Step 4 of 4 - Review and send"
-          title="New envelope"
+          description={copy.header.description}
+          title={copy.header.title}
         />
-        <StepIndicator current={4} steps={envelopeSteps} />
+        <StepIndicator current={4} steps={messages.envelope.steps} />
         <StatusPanel
           footer={
             <ShellButton
               onClick={() => window.location.reload()}
               variant="secondary"
             >
-              Retry
+              {copy.error.retry}
             </ShellButton>
           }
-          description="We couldn't load this draft summary. Try again after checking the earlier steps."
-          title="Couldn't load the review summary"
+          description={copy.error.description}
+          title={copy.error.title}
           tone="error"
         />
       </div>
@@ -213,18 +225,18 @@ export function ReviewShell({
     return (
       <div className="space-y-5">
         <PageHeader
-          description="Step 4 of 4 - Review and send"
-          title="New envelope"
+          description={copy.header.description}
+          title={copy.header.title}
         />
-        <StepIndicator current={4} steps={envelopeSteps} />
+        <StepIndicator current={4} steps={messages.envelope.steps} />
         <StatusPanel
           action={{
             href: `/envelopes/${envelopeId}/prepare`,
-            label: "Back to prepare",
+            label: copy.empty.action,
           }}
-          description="Add signers and place fields before you review the final summary for this envelope."
-          eyebrow="Incomplete draft"
-          title="Nothing to review yet"
+          description={copy.empty.description}
+          eyebrow={copy.empty.eyebrow}
+          title={copy.empty.title}
         />
       </div>
     );
@@ -258,17 +270,17 @@ export function ReviewShell({
   return (
     <div className="space-y-5">
       <PageHeader
-        description="Step 4 of 4 - Review and send"
-        title="New envelope"
+        description={copy.header.description}
+        title={copy.header.title}
       />
 
-      <StepIndicator current={4} steps={envelopeSteps} />
+      <StepIndicator current={4} steps={messages.envelope.steps} />
 
       {notice ? (
         <section className="notice notice-success" role="status">
           <p>{notice}</p>
           <p className="mt-0.5 font-medium text-(--secondary)">
-            Opening the envelope detail view...
+            {copy.notice.opening}
           </p>
         </section>
       ) : null}
@@ -280,7 +292,7 @@ export function ReviewShell({
       >
         <div className="grid gap-5 lg:grid-cols-[minmax(0,0.4fr)_minmax(0,0.6fr)]">
           <article className="well flex flex-col gap-5 p-5 sm:p-6">
-            <p className="section-eyebrow">Document</p>
+            <p className="section-eyebrow">{copy.document.eyebrow}</p>
             <div className="flex h-56 items-center justify-center">
               <DocumentThumbnail
                 envelopeId={envelopeId}
@@ -292,8 +304,16 @@ export function ReviewShell({
                 {activeRecord.title}
               </h2>
               <p className="text-sm leading-6 text-(--secondary)">
-                {activeRecord.filename} - {activeRecord.pageCount} pages -{" "}
-                {activeRecord.sizeLabel}
+                {formatMessage(copy.document.meta, {
+                  filename: activeRecord.filename,
+                  pageCount:
+                    activeRecord.pageCount === 1
+                      ? copy.document.pageOne
+                      : formatMessage(copy.document.page, {
+                          count: activeRecord.pageCount,
+                        }),
+                  sizeLabel: activeRecord.sizeLabel,
+                })}
               </p>
             </div>
           </article>
@@ -301,11 +321,15 @@ export function ReviewShell({
           <article className="min-w-0">
             <div className="flex items-center justify-between gap-3 px-1">
               <h2 className="text-lg font-extrabold text-(--fg)">
-                Signing order
+                {copy.signingOrder.title}
               </h2>
               <span className="pill pill-neutral">
-                {activeRecord.signers.length}{" "}
-                {activeRecord.signers.length === 1 ? "signer" : "signers"}
+                {formatMessage(
+                  activeRecord.signers.length === 1
+                    ? copy.signingOrder.signerOne
+                    : copy.signingOrder.signers,
+                  { count: activeRecord.signers.length },
+                )}
               </span>
             </div>
 
@@ -351,7 +375,9 @@ export function ReviewShell({
                               className="size-2 rounded-full"
                               style={{ backgroundColor: palette.color }}
                             />
-                            Signer {signer.order}
+                            {formatMessage(copy.signingOrder.signer, {
+                              order: signer.order,
+                            })}
                           </span>
                         </div>
 
@@ -362,7 +388,10 @@ export function ReviewShell({
                               : "font-semibold text-(--danger)"
                           }`}
                         >
-                          {formatSignerFieldSummary(signer.fieldSummaries)}
+                          {formatSignerFieldSummary(
+                            signer.fieldSummaries,
+                            copy.fields,
+                          )}
                         </p>
                       </div>
                     </div>
@@ -374,7 +403,7 @@ export function ReviewShell({
             {activeRecord.copyRecipients.length > 0 ? (
               <div className="well mt-3 p-4">
                 <p className="text-[0.9375rem] font-bold text-(--fg)">
-                  Copies when everyone has signed
+                  {copy.signingOrder.copies}
                 </p>
                 <ul className="mt-2 space-y-1 text-sm leading-6 text-(--secondary)">
                   {activeRecord.copyRecipients.map((recipient) => (
@@ -388,15 +417,15 @@ export function ReviewShell({
 
             <p className="notice notice-accent mt-4 font-medium">
               {signsAtTheSameTime
-                ? "After you send, everyone numbered 1 receives an email with a link to sign. Signers with the same number sign at the same time, and the next number is invited once they have all signed."
-                : "After you send, Signer 1 will receive an email with a link to sign. Each signer is notified in order after the previous signer completes."}
+                ? copy.signingOrder.parallel
+                : copy.signingOrder.sequential}
             </p>
 
             <div className="well mt-4 p-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="grid gap-1.5">
                   <span className="text-[0.8125rem] font-semibold text-(--secondary)">
-                    Signing deadline
+                    {copy.settings.deadline}
                   </span>
                   <select
                     className="field-input"
@@ -408,14 +437,14 @@ export function ReviewShell({
                   >
                     {ENVELOPE_DEADLINE_DAY_OPTIONS.map((days) => (
                       <option key={days} value={days}>
-                        {days} days
+                        {formatMessage(copy.settings.deadlineOption, { days })}
                       </option>
                     ))}
                   </select>
                 </label>
                 <label className="grid gap-1.5">
                   <span className="text-[0.8125rem] font-semibold text-(--secondary)">
-                    Automatic reminders
+                    {copy.settings.reminders}
                   </span>
                   <select
                     className="field-input"
@@ -429,19 +458,25 @@ export function ReviewShell({
                     }
                     value={reminderDays ?? "off"}
                   >
-                    <option value="off">{formatReminderInterval(null)}</option>
+                    <option value="off">
+                      {formatReminderIntervalMessage(
+                        null,
+                        messages.envelope.reminderIntervals,
+                      )}
+                    </option>
                     {ENVELOPE_REMINDER_DAY_OPTIONS.map((days) => (
                       <option key={days} value={days}>
-                        {formatReminderInterval(days)}
+                        {formatReminderIntervalMessage(
+                          days,
+                          messages.envelope.reminderIntervals,
+                        )}
                       </option>
                     ))}
                   </select>
                 </label>
               </div>
               <p className="mt-3 text-sm leading-6 text-(--secondary)">
-                Signing links stop working at the deadline. Reminders go to the
-                signer whose turn it is until they sign. You can change both
-                later from the envelope.
+                {copy.settings.explanation}
               </p>
             </div>
 
@@ -449,7 +484,7 @@ export function ReviewShell({
               <div className="well mt-4 p-4">
                 <label className="grid gap-1.5">
                   <span className="text-[0.8125rem] font-semibold text-(--secondary)">
-                    Signature type
+                    {copy.settings.signatureType}
                   </span>
                   <select
                     className="field-input"
@@ -465,6 +500,7 @@ export function ReviewShell({
                           {describeSignatureLevel(
                             level,
                             record.signingProvider!.name,
+                            copy.signature,
                           )}
                         </option>
                       ),
@@ -473,14 +509,18 @@ export function ReviewShell({
                 </label>
                 <p className="mt-3 text-sm leading-6 text-(--secondary)">
                   {signatureLevel === "simple"
-                    ? "Signers sign here, and the finished PDF is sealed by this install."
-                    : `Each signer proves who they are at ${record.signingProvider.name} and signs with a certificate in their own name. ${signatureLevel === "qualified" ? "A qualified signature needs a qualified certificate, which not every signer has. " : ""}Which type a document needs is a legal question; this is not legal advice.`}
+                    ? copy.signature.simpleDescription
+                    : formatMessage(copy.signature.providerDescription, {
+                        providerName: record.signingProvider.name,
+                        qualifiedNote:
+                          signatureLevel === "qualified"
+                            ? copy.signature.qualifiedNote
+                            : "",
+                      })}
                 </p>
                 {providerLevelBlocked ? (
                   <p className="notice notice-danger mt-3" role="alert">
-                    These signatures are added one after another, so signers
-                    cannot sign at the same time. Give each signer their own
-                    step, or choose SignuDoc signatures.
+                    {copy.signature.parallelBlocked}
                   </p>
                 ) : null}
               </div>
@@ -499,10 +539,10 @@ export function ReviewShell({
             href={`/envelopes/${envelopeId}/prepare`}
             variant="secondary"
           >
-            ← Back
+            {copy.actions.back}
           </ShellButton>
           <ShellButton disabled={!canSend} onClick={openConfirmation}>
-            Send envelope
+            {copy.actions.send}
           </ShellButton>
         </div>
       </section>
@@ -513,8 +553,9 @@ export function ReviewShell({
           errorMessage={sendPhase === "error" ? sendError : null}
           firstSignerName={
             firstStepNames.length > 1
-              ? `${firstStepNames.slice(0, -1).join(", ")} and ${firstStepNames[firstStepNames.length - 1]}`
-              : (firstSigner?.name ?? "Signer 1")
+              ? `${firstStepNames.slice(0, -1).join(", ")} ${messages.common.and} ${firstStepNames[firstStepNames.length - 1]}`
+              : (firstSigner?.name ??
+                formatMessage(copy.signingOrder.signer, { order: 1 }))
           }
           firstStepSize={firstStepNames.length}
           isSending={sendPhase === "sending"}
@@ -525,6 +566,7 @@ export function ReviewShell({
               ? describeSignatureLevel(
                   signatureLevel,
                   record.signingProvider.name,
+                  copy.signature,
                 )
               : null
           }
@@ -564,6 +606,8 @@ function SendConfirmationDialog({
   title,
 }: SendConfirmationDialogProps) {
   const [isPermittedUseConfirmed, setIsPermittedUseConfirmed] = useState(false);
+  const { messages } = useMessages();
+  const copy = messages.envelope.review;
 
   return (
     <Dialog
@@ -577,23 +621,37 @@ function SendConfirmationDialog({
       <DialogContent className="max-w-md sm:p-8" showCloseButton={false}>
         <div className="space-y-4">
           <DialogHeader className="space-y-3">
-            <DialogTitle>Send this envelope?</DialogTitle>
+            <DialogTitle>{copy.dialog.title}</DialogTitle>
             <DialogDescription asChild>
               <div className="space-y-3 text-sm leading-6 text-(--secondary)">
                 <p>
-                  &quot;{title}&quot; will be sent to {signerCount}{" "}
-                  {signerCount === 1 ? "signer" : "signers"}.{" "}
-                  {signerCount === 1
-                    ? `${firstSignerName} will be notified immediately.`
-                    : firstStepSize > 1
-                      ? `${firstSignerName} will be notified immediately, to sign at the same time.`
-                      : `The first signer (${firstSignerName}) will be notified immediately.`}{" "}
-                  The request expires in {deadlineDays} days.
+                  {formatMessage(copy.dialog.summary, {
+                    title,
+                    signerCount,
+                    signerLabel:
+                      signerCount === 1
+                        ? copy.dialog.signerOne
+                        : copy.dialog.signers,
+                    firstSignerNotice:
+                      signerCount === 1
+                        ? formatMessage(copy.dialog.notifiedImmediate, {
+                            name: firstSignerName,
+                          })
+                        : firstStepSize > 1
+                          ? formatMessage(copy.dialog.notifiedParallel, {
+                              name: firstSignerName,
+                            })
+                          : formatMessage(copy.dialog.notifiedFirst, {
+                              name: firstSignerName,
+                            }),
+                    deadlineDays,
+                  })}
                 </p>
                 {signatureType ? (
                   <p>
-                    Signature type: {signatureType}. It cannot be changed once
-                    the envelope is sent.
+                    {formatMessage(copy.dialog.signatureType, {
+                      type: signatureType,
+                    })}
                   </p>
                 ) : null}
               </div>
@@ -612,18 +670,16 @@ function SendConfirmationDialog({
                 }
               />
               <span className="text-sm leading-6 text-(--secondary)">
-                By sending, you confirm this document is an ordinary business
-                agreement and not a will, court order, legally required consumer
-                disclosure, or other{" "}
+                {copy.dialog.permittedUseBefore}
                 <a
                   className="font-semibold text-(--accent-ink) underline decoration-[rgb(var(--accent-rgb)/0.35)] underline-offset-4"
                   href={PERMITTED_USE_PATH}
                   rel="noreferrer"
                   target="_blank"
                 >
-                  document that cannot be signed electronically
+                  {copy.dialog.permittedUseLink}
                 </a>
-                .
+                {copy.dialog.permittedUseAfter}
               </span>
             </span>
           </label>
@@ -640,14 +696,14 @@ function SendConfirmationDialog({
               onClick={onCancel}
               variant="secondary"
             >
-              Cancel
+              {copy.actions.cancel}
             </ShellButton>
             <ShellButton
               disabled={!isPermittedUseConfirmed}
               loading={isSending}
               onClick={onConfirm}
             >
-              {isSending ? "Sending..." : "Send now"}
+              {isSending ? copy.actions.sending : copy.actions.sendNow}
             </ShellButton>
           </div>
         </div>
@@ -656,12 +712,17 @@ function SendConfirmationDialog({
   );
 }
 
-function formatSignerFieldSummary(fields: readonly ReviewFieldSummaryLabel[]) {
+function formatSignerFieldSummary(
+  fields: readonly ReviewFieldSummaryLabel[],
+  copy: ReviewCopy["fields"],
+) {
   const fieldCount = fields.length;
 
   if (fieldCount === 0) {
-    return "No fields placed yet (0 fields)";
+    return copy.none;
   }
 
-  return `(${fieldCount} field${fieldCount === 1 ? "" : "s"})`;
+  return formatMessage(fieldCount === 1 ? copy.countOne : copy.countMany, {
+    count: fieldCount,
+  });
 }

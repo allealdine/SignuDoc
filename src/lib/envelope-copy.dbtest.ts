@@ -30,13 +30,13 @@ import {
   verifyAuditChain,
 } from "./services/audit.ts";
 import {
-  buildEnvelopeOriginalPdfKey,
-  buildEnvelopeThumbnailKey,
-} from "./services/storage-keys.ts";
-import {
   createStorageService,
   type StorageService,
 } from "./services/storage.ts";
+import {
+  buildEnvelopeOriginalPdfKey,
+  buildEnvelopeThumbnailKey,
+} from "./services/storage-keys.ts";
 
 // Copying a finished envelope into a new draft, against a real Postgres
 // and real files. Run with `npm run test:db`.

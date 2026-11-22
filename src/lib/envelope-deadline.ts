@@ -1,3 +1,4 @@
+import { intlLocales, type Locale } from "./i18n/types.ts";
 import {
   DEFAULT_ENVELOPE_DEADLINE_DAYS,
   MAX_ENVELOPE_DEADLINE_DAYS,
@@ -93,18 +94,21 @@ export function nextSignerLinkExpiresAt(
     : turnStartsAt + SIGNING_LINK_TTL_SECONDS;
 }
 
-const deadlineFormatter = new Intl.DateTimeFormat("en-US", {
-  day: "numeric",
-  hour: "numeric",
-  minute: "2-digit",
-  month: "long",
-  timeZone: "UTC",
-  year: "numeric",
-});
-
-/** "December 12, 2026 at 9:20 PM UTC" */
-export function formatDeadline(unixTimestamp: number): string {
-  return `${deadlineFormatter
+/** "December 12, 2026 at 9:20 PM UTC", or its localized equivalent. */
+export function formatDeadline(
+  unixTimestamp: number,
+  locale: Locale = "en",
+): string {
+  const formatted = new Intl.DateTimeFormat(intlLocales[locale], {
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    month: "long",
+    timeZone: "UTC",
+    year: "numeric",
+  })
     .format(new Date(unixTimestamp * 1000))
-    .replace(/[  ]/g, " ")} UTC`;
+    .replace(/[  ]/g, " ");
+
+  return `${formatted} UTC`;
 }

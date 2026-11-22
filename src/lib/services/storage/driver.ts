@@ -1,4 +1,4 @@
-import { type EnvSource } from "../../utils/env.ts";
+import type { EnvSource } from "../../utils/env.ts";
 
 // Which storage the app uses. Kept free of the drivers themselves so the
 // request proxy can ask without loading them.

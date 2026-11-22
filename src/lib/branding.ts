@@ -5,14 +5,13 @@ import type { ResolvedSettings } from "./settings.ts";
 //
 // A neutral install (the default) carries the name of the organization that
 // runs it, links to that organization's own terms and privacy policy, and
-// says "Powered by SignuDoc" in the footer. Hosted mode (HOSTED_MODE=1) is
-// SignuDoc run as a public service: its own name, landing page and legal
+// says "Powered by Sakta" in the footer. Hosted mode (HOSTED_MODE=1) is
+// Sakta run as a public service: its own name, landing page and legal
 // pages. An install's own logo and color are not used there.
 
-export const SIGNUDOC_NAME = "SignuDoc";
-// The project's home is its repository. There is no SignuDoc-run site that
-// an install should send its visitors to, and no address there to write to.
-export const SIGNUDOC_URL = "https://github.com/NYLLON-SOFTWARE/SignuDoc";
+export const SIGNUDOC_NAME = "Sakta";
+/** The public home of the Sakta service, linked from neutral installs. */
+export const SIGNUDOC_URL = "https://sakta.my.id";
 
 /** Where the install's logo is served. Public: it is shown to signers. */
 export const BRAND_LOGO_PATH = "/api/brand/logo";
@@ -43,6 +42,11 @@ export type Branding = {
    * The path changes whenever the logo does, so it can be cached for good.
    */
   logoUrl: string | null;
+  /**
+   * The raster logo for email headers, or null to reuse `logoUrl`. Mail
+   * programs often refuse to show SVG, so the hosted service keeps a PNG.
+   */
+  emailLogoUrl: string | null;
   /** The organization's name, when one has been set. */
   organizationName: string | null;
   privacyUrl: string | null;
@@ -54,12 +58,13 @@ export type Branding = {
   termsUrl: string | null;
 };
 
-/** SignuDoc under its own name. Also what a page shows before it knows better. */
+/** Sakta under its own name. Also what a page shows before it knows better. */
 export const HOSTED_BRANDING: Branding = {
   brandColor: null,
   contactUrl: "/contact",
+  emailLogoUrl: "/img/logo.png",
   hosted: true,
-  logoUrl: null,
+  logoUrl: "/img/logo.svg",
   organizationName: null,
   privacyUrl: "/privacy",
   productName: SIGNUDOC_NAME,
@@ -83,15 +88,17 @@ export function buildBranding(settings: ResolvedSettings): Branding {
   }
 
   const organizationName = settings.organizationName?.trim() || null;
+  const logoUrl =
+    settings.logoVersion === null
+      ? null
+      : buildBrandLogoPath(settings.logoVersion);
 
   return {
     brandColor: normalizeBrandColor(settings.brandColor),
     contactUrl: null,
+    emailLogoUrl: logoUrl,
     hosted: false,
-    logoUrl:
-      settings.logoVersion === null
-        ? null
-        : buildBrandLogoPath(settings.logoVersion),
+    logoUrl,
     organizationName,
     privacyUrl: settings.privacyUrl,
     productName: organizationName ?? SIGNUDOC_NAME,

@@ -1,23 +1,23 @@
 import { NextResponse } from "next/server";
 
 import { requireAdminSession } from "@/lib/auth/admin";
+import { getDb } from "@/lib/db/connection";
 import {
   listPeople,
-  parsePersonRole,
   PeopleError,
+  parsePersonRole,
   setPersonRole,
 } from "@/lib/people";
 import { logRouteError, logSecurityEvent } from "@/lib/security/logging";
-import {
-  applyRateLimit,
-  buildRateLimitKey,
-} from "@/lib/security/route-controls";
-import { getDb } from "@/lib/db/connection";
 import {
   getClientIpAddress,
   getRequestClient,
   getRequestPathname,
 } from "@/lib/security/request";
+import {
+  applyRateLimit,
+  buildRateLimitKey,
+} from "@/lib/security/route-controls";
 
 type PersonRouteContext = {
   params: Promise<{

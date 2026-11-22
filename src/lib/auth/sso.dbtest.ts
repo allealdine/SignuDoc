@@ -1,20 +1,19 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { createServer, type Server } from "node:http";
-import type { AddressInfo } from "node:net";
 import { registerHooks } from "node:module";
+import type { AddressInfo } from "node:net";
 import { after, before, beforeEach, test } from "node:test";
 
-import { exportJWK, generateKeyPair, SignJWT, type JWK } from "jose";
+import { exportJWK, generateKeyPair, type JWK, SignJWT } from "jose";
 import type pg from "pg";
-
-import type { createAppAuth as CreateAppAuth } from "./server.ts";
 import { replaceDbPoolForTests } from "../db/connection.ts";
 import { openTestDatabase } from "../db/test-database.ts";
 import { clearRateLimitStoreForTests } from "../security/rate-limit.ts";
 import { listSystemAuditEvents } from "../services/system-audit.ts";
 import { invalidateSettingsCache, saveSettings } from "../settings.ts";
 import { needsTwoFactorSetup } from "../sign-in-security.ts";
+import type { createAppAuth as CreateAppAuth } from "./server.ts";
 
 // Single sign-on against a real Postgres, the real Better Auth endpoints and
 // a small OpenID Connect provider run here: discovery, signed ID tokens and

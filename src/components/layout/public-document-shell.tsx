@@ -1,11 +1,14 @@
-import type { ReactNode } from "react";
 import { connection } from "next/server";
+import type { ReactNode } from "react";
 
 import { Brand } from "@/components/layout/brand";
 import { BrandingProvider } from "@/components/layout/branding-provider";
 import { PublicLegalFooter } from "@/components/layout/public-legal-links";
 import { PublicSessionMenu } from "@/components/layout/public-session-menu";
-import { buildBranding, type Branding } from "@/lib/branding";
+import { type Branding, buildBranding } from "@/lib/branding";
+import { formatMessage } from "@/lib/i18n/format.ts";
+import { getMessages } from "@/lib/i18n/messages.ts";
+import { getRequestLocale } from "@/lib/i18n/request.ts";
 import { getBranding, resolveSettings } from "@/lib/settings";
 
 type PublicDocumentShellProps = {
@@ -14,6 +17,10 @@ type PublicDocumentShellProps = {
   /** For policies. A page that is a tool, not a policy, leaves it out. */
   lastUpdated?: string;
   title: string;
+};
+
+type PublicDocumentPageProps = PublicDocumentShellProps & {
+  lastUpdatedLabel?: string;
 };
 
 async function loadBranding(): Promise<Branding> {
@@ -41,13 +48,21 @@ export async function PublicDocumentShell({
   // Read when the page is requested, so one build serves any install.
   await connection();
 
-  const branding = await loadBranding();
+  const [branding, locale] = await Promise.all([
+    loadBranding(),
+    getRequestLocale(),
+  ]);
+  const lastUpdatedLabel = lastUpdated
+    ? formatMessage(getMessages(locale).common.lastUpdated, {
+        date: lastUpdated,
+      })
+    : undefined;
 
   return (
     <BrandingProvider branding={branding}>
       <PublicDocumentPage
         description={description}
-        lastUpdated={lastUpdated}
+        lastUpdatedLabel={lastUpdatedLabel}
         title={title}
       >
         {children}
@@ -59,9 +74,9 @@ export async function PublicDocumentShell({
 function PublicDocumentPage({
   children,
   description,
-  lastUpdated,
+  lastUpdatedLabel,
   title,
-}: PublicDocumentShellProps) {
+}: PublicDocumentPageProps) {
   return (
     <div className="flex min-h-screen flex-col text-(--fg)">
       <header>
@@ -78,10 +93,8 @@ function PublicDocumentPage({
             data-animate="enter"
           >
             <div className="px-6 pb-2 pt-9 sm:px-12 sm:pt-12">
-              {lastUpdated ? (
-                <p className="section-eyebrow mb-3">
-                  Last updated {lastUpdated}
-                </p>
+              {lastUpdatedLabel ? (
+                <p className="section-eyebrow mb-3">{lastUpdatedLabel}</p>
               ) : null}
               <h1 className="max-w-[20ch] text-[clamp(2rem,4.5vw,3rem)] font-extrabold leading-[1.06] tracking-[-0.035em] text-(--fg)">
                 {title}

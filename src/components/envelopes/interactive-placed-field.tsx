@@ -1,12 +1,21 @@
 "use client";
 
 import {
-  useRef,
   type KeyboardEvent,
   type PointerEvent as ReactPointerEvent,
+  useRef,
 } from "react";
 
-import { type FieldResizeHandle } from "@/lib/utils/pdf-coords";
+import { formatMessage } from "@/lib/i18n/format.ts";
+import { useMessages } from "@/lib/i18n/messages-provider.tsx";
+import type { FieldResizeHandle } from "@/lib/utils/pdf-coords";
+
+const cornerKeys = {
+  "bottom-left": "bottomLeft",
+  "bottom-right": "bottomRight",
+  "top-left": "topLeft",
+  "top-right": "topRight",
+} as const;
 
 const dragThresholdPx = 4;
 const compactFieldHeightThreshold = 0.045;
@@ -85,6 +94,8 @@ export function InteractivePlacedField({
   onSelect,
   signer,
 }: InteractivePlacedFieldProps) {
+  const { messages } = useMessages();
+  const fieldCopy = messages.envelope.placedField;
   const gestureRef = useRef<PointerGesture | null>(null);
   const percentMultiplier = 100 / coordinateScale;
   const isRadio = field.type === "radio";
@@ -209,7 +220,10 @@ export function InteractivePlacedField({
 
   return (
     <div
-      aria-label={`${signer.name} · ${label}`}
+      aria-label={formatMessage(fieldCopy.ariaLabel, {
+        name: signer.name,
+        label,
+      })}
       aria-pressed={isSelected}
       className={`absolute z-2 flex touch-none select-none items-center justify-center overflow-visible border-2 text-center text-[11px] font-semibold shadow-(--shadow-card) transition ${
         isSelected
@@ -243,7 +257,10 @@ export function InteractivePlacedField({
       {isSelected
         ? resizeHandles.map((handle) => (
             <button
-              aria-label={`Resize ${label} field from ${handle.corner}`}
+              aria-label={formatMessage(fieldCopy.resizeAriaLabel, {
+                label,
+                corner: fieldCopy.corners[cornerKeys[handle.corner]],
+              })}
               className={`absolute ${handle.positionClassName} ${handle.cursorClassName} z-1 size-4 rounded-full bg-white shadow-[0_4px_10px_rgba(28,29,43,0.18)]`}
               key={handle.corner}
               onPointerCancel={endGesture}

@@ -3,9 +3,11 @@
 import { useState } from "react";
 
 import { ShellButton } from "@/components/shared/form-shell";
+import { useMessages } from "@/lib/i18n/messages-provider.tsx";
 
 // Ends every session this account has, on every device, this one included.
 export function SessionsPanel() {
+  const copy = useMessages().messages.settings.sessions;
   const [isBusy, setIsBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -21,13 +23,13 @@ export function SessionsPanel() {
       });
 
       if (!response.ok) {
-        setError("Something went wrong. Please try again.");
+        setError(copy.genericError);
         return;
       }
 
       window.location.assign("/login");
     } catch {
-      setError("Something went wrong. Please try again.");
+      setError(copy.genericError);
     } finally {
       setIsBusy(false);
     }
@@ -37,12 +39,10 @@ export function SessionsPanel() {
     <div className="panel p-6 sm:p-8">
       <div className="space-y-5">
         <h2 className="text-xl font-extrabold tracking-[-0.02em] text-(--fg)">
-          Signed-in devices
+          {copy.title}
         </h2>
         <p className="max-w-2xl text-sm leading-6 text-(--secondary)">
-          If you signed in on a computer that is not yours, or lost a device,
-          sign out everywhere. Every browser signed in to your account,
-          including this one, has to sign in again.
+          {copy.description}
         </p>
         {error ? (
           <p className="notice notice-danger" role="alert">
@@ -55,7 +55,7 @@ export function SessionsPanel() {
           onClick={() => void signOutEverywhere()}
           variant="secondary"
         >
-          {isBusy ? "Signing out..." : "Sign out everywhere"}
+          {isBusy ? copy.signingOut : copy.signOut}
         </ShellButton>
       </div>
     </div>

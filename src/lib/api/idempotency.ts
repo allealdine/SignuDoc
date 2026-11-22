@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-import { getDb, queryOne, type DbExecutor } from "../db/connection.ts";
+import { type DbExecutor, getDb, queryOne } from "../db/connection.ts";
 
 // Idempotency-Key for the API's create and send calls. The first request
 // with a key reserves it; when it finishes, its response is kept for 24

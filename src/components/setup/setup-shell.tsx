@@ -2,10 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import {
-  useState,
   type ChangeEvent,
   type FormEvent,
   type ReactNode,
+  useState,
 } from "react";
 
 import { Brand } from "@/components/layout/brand";
@@ -21,8 +21,8 @@ import {
   joinSendingDomain,
   normalizeSubdomain,
   readResendEmailDomain,
-  suggestSendingRootDomain,
   type SenderAddressParts,
+  suggestSendingRootDomain,
 } from "@/lib/sending-domain";
 import type { SetupFieldName, SetupView } from "@/lib/setup";
 import { getEmailDomain, suggestSignupPolicy } from "@/lib/signup-policy";

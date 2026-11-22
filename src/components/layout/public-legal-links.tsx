@@ -3,9 +3,12 @@
 import Link from "next/link";
 
 import { useBranding } from "@/components/layout/branding-provider";
+import { LocaleSwitcher } from "@/components/layout/locale-switcher";
 import { SIGNUDOC_NAME, SIGNUDOC_URL } from "@/lib/branding";
-import { PUBLIC_COPYRIGHT_YEAR, publicFooterLinks } from "@/lib/legal";
 import { cn } from "@/lib/cn";
+import { formatMessage } from "@/lib/i18n/format.ts";
+import { useMessages } from "@/lib/i18n/messages-provider.tsx";
+import { PUBLIC_COPYRIGHT_YEAR, publicFooterLinks } from "@/lib/legal";
 import { PERMITTED_USE_PATH } from "@/lib/permitted-uses";
 
 type PublicLegalFooterProps = {
@@ -28,24 +31,43 @@ export function PublicLegalFooter({
   linkClassName,
 }: PublicLegalFooterProps) {
   const branding = useBranding();
+  const { messages } = useMessages();
+  const footer = messages.footer;
   const resolvedLinkClassName =
     linkClassName ??
     "text-[0.8125rem] font-medium text-(--tertiary) transition-colors hover:text-(--accent-ink)";
   // The hosted service links to its own pages. Any other install links to
   // whatever terms and privacy policy its organization has published.
   const links: FooterLink[] = branding.hosted
-    ? publicFooterLinks.map((link) => ({
-        external: false,
-        href: link.href,
-        label: labelVariant === "long" ? link.longLabel : link.shortLabel,
-      }))
+    ? publicFooterLinks.map((link) => {
+        const labels =
+          link.href === "/terms"
+            ? { long: footer.termsLong, short: footer.termsShort }
+            : link.href === "/privacy"
+              ? { long: footer.privacyLong, short: footer.privacyShort }
+              : link.href === "/contact"
+                ? { long: footer.contact, short: footer.contact }
+                : {
+                    long: footer.accessibilityLong,
+                    short: footer.accessibilityShort,
+                  };
+
+        return {
+          external: false,
+          href: link.href,
+          label: labelVariant === "long" ? labels.long : labels.short,
+        };
+      })
     : [
         ...(branding.termsUrl
           ? [
               {
                 external: true,
                 href: branding.termsUrl,
-                label: labelVariant === "long" ? "Terms of Service" : "Terms",
+                label:
+                  labelVariant === "long"
+                    ? footer.termsLong
+                    : footer.termsShort,
               },
             ]
           : []),
@@ -55,12 +77,18 @@ export function PublicLegalFooter({
           ? {
               external: true,
               href: branding.privacyUrl,
-              label: labelVariant === "long" ? "Privacy Policy" : "Privacy",
+              label:
+                labelVariant === "long"
+                  ? footer.privacyLong
+                  : footer.privacyShort,
             }
           : {
               external: false,
               href: "/signer-privacy",
-              label: labelVariant === "long" ? "Privacy notice" : "Privacy",
+              label:
+                labelVariant === "long"
+                  ? footer.privacyNotice
+                  : footer.privacyShort,
             },
       ];
 
@@ -68,7 +96,10 @@ export function PublicLegalFooter({
   links.push({
     external: false,
     href: PERMITTED_USE_PATH,
-    label: labelVariant === "long" ? "What this is for" : "E-signatures",
+    label:
+      labelVariant === "long"
+        ? footer.permittedUseLong
+        : footer.permittedUseShort,
   });
 
   return (
@@ -81,7 +112,7 @@ export function PublicLegalFooter({
 
           {links.length > 0 ? (
             <nav
-              aria-label="Footer"
+              aria-label={footer.ariaLabel}
               className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2"
             >
               {links.map((link) =>
@@ -108,6 +139,8 @@ export function PublicLegalFooter({
             </nav>
           ) : null}
 
+          <LocaleSwitcher className="justify-center" />
+
           {branding.hosted ? null : (
             <a
               className={resolvedLinkClassName}
@@ -115,7 +148,7 @@ export function PublicLegalFooter({
               rel="noreferrer"
               target="_blank"
             >
-              Powered by {SIGNUDOC_NAME}
+              {formatMessage(footer.poweredBy, { productName: SIGNUDOC_NAME })}
             </a>
           )}
         </div>

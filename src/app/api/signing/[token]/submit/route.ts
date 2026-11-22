@@ -2,25 +2,25 @@ import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 
 import { getDb } from "@/lib/db/connection";
-import {
-  verificationRequiredResponse,
-  verifiedMethodsForRequest,
-} from "@/lib/signing-route";
-import {
-  SigningAccessError,
-  SigningVerificationRequiredError,
-  SigningMutationError,
-  submitSigningForToken,
-} from "@/lib/signing";
 import { logRouteError } from "@/lib/security/logging";
+import {
+  getClientIpAddress,
+  getRequestUserAgent,
+} from "@/lib/security/request";
 import {
   applyPublicLinkRateLimit,
   buildRateLimitKey,
 } from "@/lib/security/route-controls";
 import {
-  getClientIpAddress,
-  getRequestUserAgent,
-} from "@/lib/security/request";
+  SigningAccessError,
+  SigningMutationError,
+  SigningVerificationRequiredError,
+  submitSigningForToken,
+} from "@/lib/signing";
+import {
+  verificationRequiredResponse,
+  verifiedMethodsForRequest,
+} from "@/lib/signing-route";
 
 type SigningSubmitRouteContext = {
   params: Promise<{

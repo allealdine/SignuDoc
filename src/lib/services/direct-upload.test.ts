@@ -1,11 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-
+import { MAX_UPLOAD_SIZE_BYTES } from "../types/domain.ts";
 import {
   authorizeDirectUpload,
   DirectUploadRequestError,
 } from "./direct-upload.ts";
-import { MAX_UPLOAD_SIZE_BYTES } from "../types/domain.ts";
 
 const USER_ID = "user_abc123";
 const UPLOAD_KEY = `uploads/${USER_ID}/3f0e9a2c-5b7d-4e1f-8a6b-0c9d8e7f6a5b.pdf`;

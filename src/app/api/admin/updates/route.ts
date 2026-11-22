@@ -2,11 +2,11 @@ import { NextResponse } from "next/server";
 
 import { requireAdminSession } from "@/lib/auth/admin";
 import { logRouteError } from "@/lib/security/logging";
+import { getClientIpAddress, getRequestPathname } from "@/lib/security/request";
 import {
   applyRateLimit,
   buildRateLimitKey,
 } from "@/lib/security/route-controls";
-import { getClientIpAddress, getRequestPathname } from "@/lib/security/request";
 import { checkForUpdate, getUpdateStatus } from "@/lib/software-update";
 
 // "Check for updates" in the SignuDoc section of Settings: whether a newer

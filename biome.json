@@ -1,0 +1,72 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.6.8/schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+  "files": {
+    "ignoreUnknown": true,
+    "includes": [
+      "**",
+      "!node_modules",
+      "!.next",
+      "!dist",
+      "!build",
+      "!out",
+      "!coverage",
+      "!public/pdfjs",
+      "!test-results",
+      "!playwright-report",
+      "!next-env.d.ts",
+      "!**/*.css",
+      "!**/*.svg"
+    ]
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2
+  },
+  "assist": {
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
+  },
+  "linter": {
+    "rules": {
+      "a11y": {
+        "noAutofocus": "off",
+        "noLabelWithoutControl": "off",
+        "noRedundantRoles": "off",
+        "noSvgWithoutTitle": "off",
+        "noStaticElementInteractions": "off",
+        "useAriaPropsSupportedByRole": "off",
+        "useSemanticElements": "off"
+      },
+      "complexity": {
+        "useOptionalChain": "off"
+      },
+      "correctness": {
+        "noUnsafeOptionalChaining": "off",
+        "useExhaustiveDependencies": "off",
+        "usePlaywrightValidDescribeCallback": "off"
+      },
+      "performance": {
+        "noImgElement": "off"
+      },
+      "style": {
+        "noNonNullAssertion": "off"
+      },
+      "suspicious": {
+        "noArrayIndexKey": "off",
+        "noAssignInExpressions": "off",
+        "noControlCharactersInRegex": "off",
+        "noImplicitAnyLet": "off",
+        "noMisleadingCharacterClass": "off"
+      }
+    }
+  }
+}

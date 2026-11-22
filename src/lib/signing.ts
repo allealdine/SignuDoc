@@ -1,7 +1,7 @@
 import { Buffer } from "node:buffer";
 import { randomUUID } from "node:crypto";
 
-import { type Branding } from "./branding.ts";
+import type { Branding } from "./branding.ts";
 import { removeUnclaimedEnvelopeCertificates } from "./certificate-cleanup.ts";
 import {
   type DbExecutor,
@@ -12,50 +12,62 @@ import {
   withTransaction,
 } from "./db/connection.ts";
 import {
-  type AuditEventRecord,
-  envelopePageSchema,
-  envelopeRecordSchema,
-} from "./schemas/envelope.ts";
-import {
   createRecipientDownloadLink,
   sanitizeFileNameSegment,
 } from "./downloads.ts";
 import {
-  fieldRecordSchema,
-  MAX_DRAWN_SIGNATURE_BYTES,
-  signingSubmissionSchema,
-  type SigningFieldSubmission,
-  type SigningSubmission,
-} from "./schemas/field.ts";
+  buildDisclosureSections,
+  consentStatement,
+  disclosureSectionsAsText,
+  getDisclosureVersion,
+  normalizeCustomDisclosure,
+} from "./electronic-records-disclosure.ts";
+import { readEmbedEvidence } from "./embedding.ts";
 import {
-  signerCheckRequestSchema,
-  signerConsentRequestSchema,
-  signingFieldFitRequestSchema,
-  signingPayloadSchema,
-  signingDeclineResponseSchema,
-  type SigningVerificationState,
-  type SigningDeclineResponse,
-  type SigningPayload,
-  signingSubmitResponseSchema,
-  type SigningSubmitResponse,
-  type SigningUnavailableResponse,
-} from "./schemas/signing.ts";
-import {
-  declineEnvelopeSchema,
-  signerRecordSchema,
-  type CopyRecipientRecord,
-} from "./schemas/signer.ts";
-import {
-  getBranding,
-  readStoredSettings,
-  resolveSettings,
-} from "./settings.ts";
+  isEnvelopeExpired,
+  nextSignerLinkExpiresAt,
+} from "./envelope-deadline.ts";
+import { describeEntryProblem, judgeRadioGroups } from "./field-choices.ts";
+import { formatMessage } from "./i18n/format.ts";
+import { getMessages } from "./i18n/messages.ts";
+import { DEFAULT_LOCALE, isLocale, type Locale } from "./i18n/types.ts";
 import {
   checkSigningCredentials,
   MAX_SIGNING_PASSWORD_ATTEMPTS,
   type PasswordVerifier,
   SIGNATURE_MEANING_DETAILS,
 } from "./part11.ts";
+import {
+  type AuditEventRecord,
+  envelopePageSchema,
+  envelopeRecordSchema,
+} from "./schemas/envelope.ts";
+import {
+  fieldRecordSchema,
+  MAX_DRAWN_SIGNATURE_BYTES,
+  type SigningFieldSubmission,
+  type SigningSubmission,
+  signingSubmissionSchema,
+} from "./schemas/field.ts";
+import {
+  type CopyRecipientRecord,
+  declineEnvelopeSchema,
+  signerRecordSchema,
+} from "./schemas/signer.ts";
+import {
+  type SigningDeclineResponse,
+  type SigningPayload,
+  type SigningSubmitResponse,
+  type SigningUnavailableResponse,
+  type SigningVerificationState,
+  signerCheckRequestSchema,
+  signerConsentRequestSchema,
+  signingDeclineResponseSchema,
+  signingFieldFitRequestSchema,
+  signingPayloadSchema,
+  signingSubmitResponseSchema,
+} from "./schemas/signing.ts";
+import { consumeRateLimit, refundRateLimit } from "./security/rate-limit.ts";
 import {
   listAuditEventsForEnvelope,
   lockEnvelopeAuditChain,
@@ -65,9 +77,9 @@ import {
 import {
   createEmailService,
   createLazyEmailService,
-  fitsAsAttachments,
   type EmailAttachment,
   type EmailService,
+  fitsAsAttachments,
 } from "./services/email.ts";
 import { withUserEmailLegalFooter } from "./services/email-legal-footer.ts";
 import { hashOpaqueToken } from "./services/opaque-tokens.ts";
@@ -78,39 +90,24 @@ import {
   storeEnvelopeCertificatePdf,
   storeRecipientEnvelopeCertificatePdf,
 } from "./services/pdf-finalize.ts";
+import { requireConfigValue } from "./services/service-config.ts";
 import { buildSigningInvitationEmail } from "./services/signing-invitation-email.ts";
-import { readEmbedEvidence } from "./embedding.ts";
 import { issueSigningLink } from "./services/signing-links.ts";
 import { signingProviderById } from "./services/signing-providers.ts";
+import {
+  createStorageService,
+  type StorageService,
+} from "./services/storage.ts";
 import {
   buildEnvelopeCertificateKey,
   buildEnvelopeSignedPdfKey,
   buildSignatureImageKey,
 } from "./services/storage-keys.ts";
 import {
-  createStorageService,
-  type StorageService,
-} from "./services/storage.ts";
-import { requireConfigValue } from "./services/service-config.ts";
-import {
-  RECIPIENT_DOWNLOAD_LINK_TTL_SECONDS,
-  type FieldType,
-} from "./types/domain.ts";
-import { getEnv } from "./utils/env.ts";
-import { escapeHtml } from "./utils/html.ts";
-import {
-  isEnvelopeExpired,
-  nextSignerLinkExpiresAt,
-} from "./envelope-deadline.ts";
-import { describeEntryProblem, judgeRadioGroups } from "./field-choices.ts";
-import { consumeRateLimit, refundRateLimit } from "./security/rate-limit.ts";
-import {
-  buildDisclosureSections,
-  CONSENT_STATEMENT,
-  disclosureSectionsAsText,
-  getDisclosureVersion,
-  normalizeCustomDisclosure,
-} from "./electronic-records-disclosure.ts";
+  getBranding,
+  readStoredSettings,
+  resolveSettings,
+} from "./settings.ts";
 import {
   checkAccessCode,
   checkEmailCode,
@@ -129,6 +126,12 @@ import {
   routeAfterSignatures,
   signingStepOf,
 } from "./signing-steps.ts";
+import {
+  type FieldType,
+  RECIPIENT_DOWNLOAD_LINK_TTL_SECONDS,
+} from "./types/domain.ts";
+import { getEnv } from "./utils/env.ts";
+import { escapeHtml } from "./utils/html.ts";
 
 export type SigningRequestMeta = {
   ipAddress?: string | null;
@@ -179,11 +182,16 @@ type SigningSignerRow = {
   id: string;
   lastNotifiedAt: number | null;
   lastNudgedAt: number | null;
+  locale: string | null;
   name: string;
   signOrder: number;
   signingStep: number | null;
   signatureMeaning:
-    "approval" | "authorship" | "responsibility" | "review" | null;
+    | "approval"
+    | "authorship"
+    | "responsibility"
+    | "review"
+    | null;
   signedAt: number | null;
   signingTokenExpiresAt: number | null;
   signingTokenHash: string | null;
@@ -232,6 +240,7 @@ type SenderRow = {
 type ResolvedSigningContext = {
   envelope: ReturnType<typeof envelopeRecordSchema.parse>;
   fields: Array<ReturnType<typeof fieldRecordSchema.parse>>;
+  locale: Locale;
   pages: Array<ReturnType<typeof envelopePageSchema.parse>>;
   sender: SenderRow;
   signer: ReturnType<typeof signerRecordSchema.parse>;
@@ -373,25 +382,31 @@ function buildCompletionSenderEmail(input: {
   branding: Branding;
   envelopeId: string;
   envelopeTitle: string;
+  locale: Locale;
   senderEmail: string;
   senderName: string;
 }) {
+  const copy = getMessages(input.locale).email.completedSender;
   const completedUrl = getEnvelopeUrl(input.envelopeId);
-  const subject = `"${input.envelopeTitle}" is fully signed`;
+  const values = {
+    productName: input.branding.productName,
+    title: input.envelopeTitle,
+  };
+  const subject = formatMessage(copy.subject, values);
   const textBody = [
-    `Hi ${input.senderName},`,
+    formatMessage(copy.greeting, { senderName: input.senderName }),
     "",
-    `"${input.envelopeTitle}" has been fully signed in ${input.branding.productName}.`,
-    "The final signed PDF and certificate are ready in your dashboard.",
+    formatMessage(copy.body, values),
+    copy.dashboard,
     "",
-    "Review the completed envelope:",
+    `${copy.cta}:`,
     completedUrl,
   ].join("\n");
   const htmlBody = [
-    `<p>Hi ${escapeHtml(input.senderName)},</p>`,
-    `<p>&ldquo;${escapeHtml(input.envelopeTitle)}&rdquo; has been fully signed in ${escapeHtml(input.branding.productName)}.</p>`,
-    "<p>The final signed PDF and certificate are ready in your dashboard.</p>",
-    `<p><a href="${escapeHtml(completedUrl)}">Review the completed envelope</a></p>`,
+    `<p>${escapeHtml(formatMessage(copy.greeting, { senderName: input.senderName }))}</p>`,
+    `<p>${escapeHtml(formatMessage(copy.body, values))}</p>`,
+    `<p>${escapeHtml(copy.dashboard)}</p>`,
+    `<p><a href="${escapeHtml(completedUrl)}">${escapeHtml(copy.cta)}</a></p>`,
   ].join("");
   const legalFooter = withUserEmailLegalFooter(
     {
@@ -399,6 +414,8 @@ function buildCompletionSenderEmail(input: {
       textBody,
     },
     input.branding,
+    process.env,
+    input.locale,
   );
 
   return {
@@ -415,32 +432,48 @@ function buildDeclineNotificationEmail(input: {
   declineReason?: string;
   envelopeId: string;
   envelopeTitle: string;
+  locale: Locale;
   senderEmail: string;
   senderName: string;
   signerEmail: string;
   signerName: string;
 }) {
+  const copy = getMessages(input.locale).email.declinedSender;
   const envelopeUrl = getEnvelopeUrl(input.envelopeId);
-  const subject = `"${input.envelopeTitle}" was declined by ${input.signerName}`;
-  const reasonLine = input.declineReason?.trim()
-    ? `Reason provided: ${input.declineReason.trim()}`
-    : null;
+  const values = {
+    productName: input.branding.productName,
+    title: input.envelopeTitle,
+  };
+  const subject = formatMessage(copy.subject, {
+    signerName: input.signerName,
+    title: input.envelopeTitle,
+  });
+  const reason = input.declineReason?.trim();
+  const reasonLine = reason ? formatMessage(copy.reason, { reason }) : null;
   const textBody = [
-    `Hi ${input.senderName},`,
+    formatMessage(copy.greeting, { senderName: input.senderName }),
     "",
-    `${input.signerName} (${input.signerEmail}) declined "${input.envelopeTitle}" in ${input.branding.productName}.`,
+    formatMessage(copy.body, {
+      ...values,
+      signerEmail: input.signerEmail,
+      signerName: input.signerName,
+    }),
     ...(reasonLine ? ["", reasonLine] : []),
     "",
-    "Review the envelope:",
+    `${copy.cta}:`,
     envelopeUrl,
   ].join("\n");
   const htmlBody = [
-    `<p>Hi ${escapeHtml(input.senderName)},</p>`,
-    `<p>${escapeHtml(input.signerName)} (${escapeHtml(input.signerEmail)}) declined &ldquo;${escapeHtml(input.envelopeTitle)}&rdquo; in ${escapeHtml(input.branding.productName)}.</p>`,
-    reasonLine
-      ? `<p><strong>Reason provided:</strong> ${escapeHtml(input.declineReason!.trim())}</p>`
-      : "",
-    `<p><a href="${escapeHtml(envelopeUrl)}">Review the envelope</a></p>`,
+    `<p>${escapeHtml(formatMessage(copy.greeting, { senderName: input.senderName }))}</p>`,
+    `<p>${escapeHtml(
+      formatMessage(copy.body, {
+        ...values,
+        signerEmail: input.signerEmail,
+        signerName: input.signerName,
+      }),
+    )}</p>`,
+    reasonLine ? `<p><strong>${escapeHtml(reasonLine)}</strong></p>` : "",
+    `<p><a href="${escapeHtml(envelopeUrl)}">${escapeHtml(copy.cta)}</a></p>`,
   ].join("");
   const legalFooter = withUserEmailLegalFooter(
     {
@@ -448,6 +481,8 @@ function buildDeclineNotificationEmail(input: {
       textBody,
     },
     input.branding,
+    process.env,
+    input.locale,
   );
 
   return {
@@ -467,38 +502,47 @@ function buildCompletionSignerEmail(input: {
   evidenceDownloadUrl: string;
   envelopeId: string;
   envelopeTitle: string;
+  locale: Locale;
   senderName: string;
   signerEmail: string;
   signerName: string;
   signedDownloadUrl: string;
 }) {
-  const subject = `"${input.envelopeTitle}" is fully signed`;
+  const copy = getMessages(input.locale).email.completedSigner;
+  const values = {
+    productName: input.branding.productName,
+    senderName: input.senderName,
+    title: input.envelopeTitle,
+  };
+  const subject = formatMessage(copy.subject, { title: input.envelopeTitle });
+  const greeting = formatMessage(copy.greeting, {
+    signerName: input.signerName,
+  });
+  const days = String(RECIPIENT_DOWNLOAD_LINK_TTL_DAYS);
   const textBody = [
-    `Hi ${input.signerName},`,
+    greeting,
     "",
-    `"${input.envelopeTitle}" from ${input.senderName} has been fully signed in ${input.branding.productName}.`,
+    formatMessage(copy.body, values),
     ...(input.copyOnly
-      ? [`${input.senderName} asked for you to receive a copy.`]
+      ? [formatMessage(copy.copyOnly, { senderName: input.senderName })]
       : []),
-    input.attached
-      ? "The completed document and its certificate are attached. Keep them: they are your copy of the agreement."
-      : "The completed document and its certificate are ready.",
+    input.attached ? copy.attached : copy.ready,
     "",
-    `Download links (available for ${RECIPIENT_DOWNLOAD_LINK_TTL_DAYS} days; an expired link offers to send a new one):`,
-    `Signed PDF: ${input.signedDownloadUrl}`,
-    `Redacted certificate: ${input.evidenceDownloadUrl}`,
+    formatMessage(copy.linksIntro, { days }),
+    formatMessage(copy.signedPdf, { url: input.signedDownloadUrl }),
+    formatMessage(copy.certificate, { url: input.evidenceDownloadUrl }),
   ].join("\n");
   const htmlBody = [
-    `<p>Hi ${escapeHtml(input.signerName)},</p>`,
-    `<p>&ldquo;${escapeHtml(input.envelopeTitle)}&rdquo; from ${escapeHtml(input.senderName)} has been fully signed in ${escapeHtml(input.branding.productName)}.</p>`,
+    `<p>${escapeHtml(greeting)}</p>`,
+    `<p>${escapeHtml(formatMessage(copy.body, values))}</p>`,
     input.copyOnly
-      ? `<p>${escapeHtml(input.senderName)} asked for you to receive a copy.</p>`
+      ? `<p>${escapeHtml(
+          formatMessage(copy.copyOnly, { senderName: input.senderName }),
+        )}</p>`
       : "",
-    input.attached
-      ? "<p>The completed document and its certificate are attached. Keep them: they are your copy of the agreement.</p>"
-      : "<p>The completed document and its certificate are ready.</p>",
-    `<p>Download links are available for ${RECIPIENT_DOWNLOAD_LINK_TTL_DAYS} days. An expired link offers to send a new one.</p>`,
-    `<p><a href="${escapeHtml(input.signedDownloadUrl)}">Download signed PDF</a><br /><a href="${escapeHtml(input.evidenceDownloadUrl)}">Download redacted certificate</a></p>`,
+    `<p>${escapeHtml(input.attached ? copy.attached : copy.ready)}</p>`,
+    `<p>${escapeHtml(formatMessage(copy.htmlLinksIntro, { days }))}</p>`,
+    `<p><a href="${escapeHtml(input.signedDownloadUrl)}">${escapeHtml(copy.downloadSigned)}</a><br /><a href="${escapeHtml(input.evidenceDownloadUrl)}">${escapeHtml(copy.downloadCertificate)}</a></p>`,
   ].join("");
   const legalFooter = withUserEmailLegalFooter(
     {
@@ -506,6 +550,8 @@ function buildCompletionSignerEmail(input: {
       textBody,
     },
     input.branding,
+    process.env,
+    input.locale,
   );
 
   return {
@@ -614,6 +660,7 @@ async function listSignerRows(
         turn_started_at AS "turnStartedAt",
         last_notified_at AS "lastNotifiedAt",
         last_nudged_at AS "lastNudgedAt",
+        locale,
         signed_at AS "signedAt",
         declined_at AS "declinedAt",
         decline_reason AS "declineReason",
@@ -669,6 +716,7 @@ async function getSignerRowBySigningTokenHash(
         turn_started_at AS "turnStartedAt",
         last_notified_at AS "lastNotifiedAt",
         last_nudged_at AS "lastNudgedAt",
+        locale,
         signed_at AS "signedAt",
         declined_at AS "declinedAt",
         decline_reason AS "declineReason",
@@ -1182,6 +1230,7 @@ async function sendCompletionEmails(input: {
   emailService: EmailService;
   envelopeId: string;
   envelopeTitle: string;
+  locale: Locale;
   sender: SenderRow;
   signers: Array<ReturnType<typeof signerRecordSchema.parse>>;
 }) {
@@ -1257,6 +1306,7 @@ async function sendCompletionEmails(input: {
             envelopeId: input.envelopeId,
             envelopeTitle: input.envelopeTitle,
             evidenceDownloadUrl: redactedEvidenceLink.url,
+            locale: input.locale,
             senderName,
             signedDownloadUrl: signedLink.url,
             signerEmail: signer.email,
@@ -1274,6 +1324,7 @@ async function sendCompletionEmails(input: {
         branding,
         envelopeId: input.envelopeId,
         envelopeTitle: input.envelopeTitle,
+        locale: input.locale,
         senderEmail: input.sender.email,
         senderName,
       }),
@@ -1497,28 +1548,44 @@ export async function sendSignerEmailCode(
   }
 
   const minutes = Math.round(EMAIL_CODE_TTL_SECONDS / 60);
+  const copy = getMessages(context.locale).email.signingCode;
+  const values = {
+    productName: branding.productName,
+    title: context.envelope.title,
+  };
+  const greeting = formatMessage(copy.greeting, {
+    signerName: context.signer.name,
+  });
+  const validity = formatMessage(copy.validity, {
+    minutes: String(minutes),
+  });
   const textBody = [
-    `Hi ${context.signer.name},`,
+    greeting,
     "",
-    `Your code to open "${context.envelope.title}" in ${branding.productName} is:`,
+    formatMessage(copy.body, values),
     "",
     issued.code,
     "",
-    `It works for ${String(minutes)} minutes. If you did not just open a signing link, ignore this email.`,
+    validity,
   ].join("\n");
   const htmlBody = [
-    `<p>Hi ${escapeHtml(context.signer.name)},</p>`,
-    `<p>Your code to open &ldquo;${escapeHtml(context.envelope.title)}&rdquo; in ${escapeHtml(branding.productName)} is:</p>`,
+    `<p>${escapeHtml(greeting)}</p>`,
+    `<p>${escapeHtml(formatMessage(copy.body, values))}</p>`,
     `<p style="font-size:24px;font-weight:700;letter-spacing:4px">${issued.code}</p>`,
-    `<p>It works for ${String(minutes)} minutes. If you did not just open a signing link, ignore this email.</p>`,
+    `<p>${escapeHtml(validity)}</p>`,
   ].join("");
-  const body = withUserEmailLegalFooter({ htmlBody, textBody }, branding);
+  const body = withUserEmailLegalFooter(
+    { htmlBody, textBody },
+    branding,
+    process.env,
+    context.locale,
+  );
   let delivery: Awaited<ReturnType<EmailService["send"]>>;
 
   try {
     delivery = await emailService.send({
       htmlBody: body.htmlBody,
-      subject: `Your code for "${context.envelope.title}"`,
+      subject: formatMessage(copy.subject, { title: context.envelope.title }),
       template: "signing_code",
       textBody: body.textBody,
       to: context.signer.email,
@@ -1801,6 +1868,7 @@ async function readSignerDisclosure(
       senderName: normalizeSenderName(context.sender),
     },
     customDisclosure,
+    context.locale,
   );
 
   return {
@@ -1812,8 +1880,11 @@ async function readSignerDisclosure(
     // that were shown.
     version:
       customDisclosure === null
-        ? getDisclosureVersion(null)
-        : getDisclosureVersion(disclosureSectionsAsText(sections)),
+        ? getDisclosureVersion(null, context.locale)
+        : getDisclosureVersion(
+            disclosureSectionsAsText(sections),
+            context.locale,
+          ),
   };
 }
 
@@ -1910,7 +1981,7 @@ export async function recordSignerConsent(
             : {
                 disclosureText: disclosureSectionsAsText(disclosure.sections),
               }),
-          statement: CONSENT_STATEMENT,
+          statement: consentStatement(context.locale),
         },
         userAgent: requestMeta.userAgent ?? null,
       },
@@ -2036,6 +2107,9 @@ async function resolveSigningContext(
   return {
     envelope: mapEnvelopeRow(envelopeRow),
     fields: (await listFieldRows(envelopeRow.id, database)).map(mapFieldRow),
+    // Stored when the invitation went out, so the page and the consent the
+    // signer records stay in the language they were invited in.
+    locale: isLocale(signerRow.locale) ? signerRow.locale : DEFAULT_LOCALE,
     pages: (await listPageRows(envelopeRow.id, database)).map(mapPageRow),
     sender,
     signer,
@@ -2134,13 +2208,14 @@ export async function getSigningPayloadForToken(
     currentSignerFields,
     disclosure: {
       sections: disclosure.sections,
-      statement: CONSENT_STATEMENT,
+      statement: consentStatement(context.locale),
       version: disclosure.version,
     },
     declineUrl: getSigningDeclineUrl(token),
     documentUrl: getSigningDocumentUrl(token),
     envelopeId: context.envelope.id,
     envelopeTitle: context.envelope.title,
+    locale: context.locale,
     pageCount: context.envelope.pageCount,
     pages: context.pages,
     part11:
@@ -2187,7 +2262,8 @@ async function reauthenticatePart11Signer(
   context: ResolvedSigningContext,
   state: SignerCheckState,
   reauthentication:
-    { email: string; meaningConfirmed: true; password: string } | undefined,
+    | { email: string; meaningConfirmed: true; password: string }
+    | undefined,
   {
     database,
     emailService,
@@ -2932,7 +3008,8 @@ async function submitSigningOnce(
                 signing_token_expires_at = $2,
                 turn_started_at = $3,
                 last_notified_at = $4,
-                updated_at = $5
+                updated_at = $5,
+                locale = $8
               WHERE id = $6
                 AND envelope_id = $7
                 AND role = 'signer'
@@ -2947,6 +3024,7 @@ async function submitSigningOnce(
               routedAt,
               nextSigner.id,
               context.envelope.id,
+              context.locale,
             ],
           );
 
@@ -2997,6 +3075,7 @@ async function submitSigningOnce(
               branding: await getBranding(),
               envelopeTitle: context.envelope.title,
               expiresAt: nextSignerDeadline,
+              locale: context.locale,
               senderName: normalizeSenderName(context.sender),
               signerEmail: nextSignerDelivery.email,
               signerName: nextSignerDelivery.name,
@@ -3307,6 +3386,7 @@ async function submitSigningOnce(
         emailService,
         envelopeId: context.envelope.id,
         envelopeTitle: context.envelope.title,
+        locale: context.locale,
         sender: context.sender,
         signers: completedSigners,
       });
@@ -3712,6 +3792,7 @@ async function declineSigningOnce(
         declineReason,
         envelopeId: context.envelope.id,
         envelopeTitle: context.envelope.title,
+        locale: context.locale,
         senderEmail: context.sender.email,
         senderName: normalizeSenderName(context.sender),
         signerEmail: context.signer.email,

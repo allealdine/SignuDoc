@@ -15,12 +15,12 @@ import {
   saveEnvelopeThumbnailForUser,
 } from "./envelopes.ts";
 import { deleteEnvelopesAndFiles } from "./retention.ts";
-import { buildEnvelopeThumbnailKey } from "./services/storage-keys.ts";
-import { buildThumbnailEtag } from "./services/thumbnails.ts";
 import {
   createStorageService,
   type StorageService,
 } from "./services/storage.ts";
+import { buildEnvelopeThumbnailKey } from "./services/storage-keys.ts";
+import { buildThumbnailEtag } from "./services/thumbnails.ts";
 
 // The first-page picture and the envelope it belongs to, against a real
 // Postgres: a picture must never outlive its envelope, even when the two

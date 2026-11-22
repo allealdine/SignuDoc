@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto";
 import { crc32, inflateSync } from "node:zlib";
 
-import { MAX_LOGO_BYTES, type LogoContentType } from "./branding.ts";
-import { getDb, queryOne, type DbExecutor } from "./db/connection.ts";
+import { type LogoContentType, MAX_LOGO_BYTES } from "./branding.ts";
+import { type DbExecutor, getDb, queryOne } from "./db/connection.ts";
 import { invalidateSettingsCache, isMissingSchemaError } from "./settings.ts";
 
 // The install's logo: one small image, kept in the settings row.
@@ -11,7 +11,7 @@ import { invalidateSettingsCache, isMissingSchemaError } from "./settings.ts";
 // by looking at the bytes, never by what the upload claimed to be. SVG is
 // not accepted: it can carry scripts, and email programs do not show it.
 
-export { MAX_LOGO_BYTES, type LogoContentType } from "./branding.ts";
+export { type LogoContentType, MAX_LOGO_BYTES } from "./branding.ts";
 
 export type BrandLogo = {
   bytes: Uint8Array;

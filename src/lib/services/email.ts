@@ -5,10 +5,10 @@ import path from "node:path";
 import { Resend } from "resend";
 
 import { getSettings } from "../settings.ts";
-import { type EmailTemplateKind } from "../types/domain.ts";
-import { getEnv, isLocalDeployment, type EnvSource } from "../utils/env.ts";
-import { buildEmailAddresses, type EmailAddresses } from "./email-addresses.ts";
+import type { EmailTemplateKind } from "../types/domain.ts";
+import { type EnvSource, getEnv, isLocalDeployment } from "../utils/env.ts";
 import { CAPTURED_MESSAGE_ID_PREFIX } from "./captured-email.ts";
+import { buildEmailAddresses, type EmailAddresses } from "./email-addresses.ts";
 import {
   assertServiceConfig,
   ServiceConfigurationError,

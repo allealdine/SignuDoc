@@ -4,17 +4,24 @@ import {
   ContactSubmissionError,
   submitPublicContactMessage,
 } from "@/lib/contact";
+import { getMessages } from "@/lib/i18n/messages.ts";
+import {
+  DEFAULT_LOCALE,
+  isLocale,
+  LOCALE_HEADER,
+  localeFromAcceptLanguage,
+} from "@/lib/i18n/types.ts";
 import { rejectBots } from "@/lib/security/botid";
 import { logRouteError, logSecurityEvent } from "@/lib/security/logging";
-import {
-  applyRateLimit,
-  buildRateLimitKey,
-} from "@/lib/security/route-controls";
 import {
   getClientIpAddress,
   getRequestPathname,
   getRequestUserAgent,
 } from "@/lib/security/request";
+import {
+  applyRateLimit,
+  buildRateLimitKey,
+} from "@/lib/security/route-controls";
 import { isHostedMode } from "@/lib/utils/env";
 
 export async function POST(request: Request) {
@@ -24,6 +31,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Not found." }, { status: 404 });
   }
 
+  // Read the Request directly: the proxy forwards the browser's locale in a
+  // private header, and cookie-derived pages send the same value on fetch.
+  const forwardedLocale = request.headers.get(LOCALE_HEADER);
+  const locale = isLocale(forwardedLocale)
+    ? forwardedLocale
+    : (localeFromAcceptLanguage(request.headers.get("accept-language")) ??
+      DEFAULT_LOCALE);
   const ipAddress = getClientIpAddress(request.headers);
   const userAgent = getRequestUserAgent(request.headers);
   const rateLimitResponse = await applyRateLimit({
@@ -53,13 +67,16 @@ export async function POST(request: Request) {
   > | null;
 
   try {
-    const result = await submitPublicContactMessage({
-      company:
-        typeof payload?.company === "string" ? payload.company : undefined,
-      email: String(payload?.email ?? ""),
-      message: String(payload?.message ?? ""),
-      name: String(payload?.name ?? ""),
-    });
+    const result = await submitPublicContactMessage(
+      {
+        company:
+          typeof payload?.company === "string" ? payload.company : undefined,
+        email: String(payload?.email ?? ""),
+        message: String(payload?.message ?? ""),
+        name: String(payload?.name ?? ""),
+      },
+      { locale },
+    );
 
     if (result.ignored) {
       logSecurityEvent("info", {
@@ -98,7 +115,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(
       {
-        error: "Unable to send your message right now.",
+        error: getMessages(locale).contact.form.errors.generic,
       },
       { status: 500 },
     );

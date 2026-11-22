@@ -5,13 +5,13 @@ import {
   PDFDict,
   PDFDocument,
   PDFHexString,
+  type PDFImage,
   PDFName,
   PDFNumber,
-  PDFRef,
-  PDFStream,
-  type PDFImage,
   type PDFObject,
   type PDFPage,
+  PDFRef,
+  PDFStream,
 } from "pdf-lib";
 
 import type { FieldRecord } from "../schemas/field.ts";
@@ -19,18 +19,18 @@ import { normalizedRectToPdfRect } from "../utils/pdf-coords.ts";
 import { shouldStampField, stampFieldValue } from "./pdf-finalize.ts";
 import { embedTextFaces } from "./pdf-fonts.ts";
 import {
-  displayedRectToUserSpaceBox,
-  fieldOnDisplayedPage,
-  getDisplayedPageGeometry,
-  type StoredPageSize,
-} from "./pdf-page-geometry.ts";
-import {
   appendIncrementalUpdate,
   prepareSignedUpdate,
   readTrailer,
   signaturePlaceholder,
   type UpdatedObject,
 } from "./pdf-incremental.ts";
+import {
+  displayedRectToUserSpaceBox,
+  fieldOnDisplayedPage,
+  getDisplayedPageGeometry,
+  type StoredPageSize,
+} from "./pdf-page-geometry.ts";
 import type { StorageService } from "./storage.ts";
 
 // Revisions for documents each signer signs with their own certificate.

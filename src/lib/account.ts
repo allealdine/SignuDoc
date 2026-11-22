@@ -1,13 +1,4 @@
 import {
-  accountClosureConfirmationPhrase,
-  accountClosureRequestSchema,
-  senderProfileSchema,
-  updateProfileSchema,
-  type AccountClosureRequestInput,
-  type SenderProfile,
-  type UpdateProfileInput,
-} from "./schemas/auth.ts";
-import {
   type DbExecutor,
   type DbPool,
   getDb,
@@ -16,16 +7,25 @@ import {
   withTransaction,
 } from "./db/connection.ts";
 import { ROLE_CHANGE_LOCK_ID } from "./people.ts";
+import { resolvePublicSupportAddress } from "./public-contact.ts";
 import {
   ACCOUNT_CLOSURE_EXPORT_WINDOW_DAYS,
   scheduleAccountClosure,
 } from "./retention.ts";
-import { resolvePublicSupportAddress } from "./public-contact.ts";
+import {
+  type AccountClosureRequestInput,
+  accountClosureConfirmationPhrase,
+  accountClosureRequestSchema,
+  type SenderProfile,
+  senderProfileSchema,
+  type UpdateProfileInput,
+  updateProfileSchema,
+} from "./schemas/auth.ts";
 import type { RequestClient } from "./security/request.ts";
 import { createEmailService } from "./services/email.ts";
 import { recordSystemAuditEvent } from "./services/system-audit.ts";
 import { getBranding } from "./settings.ts";
-import { isHostedMode, type EnvSource } from "./utils/env.ts";
+import { type EnvSource, isHostedMode } from "./utils/env.ts";
 
 type SenderAccountRow = {
   email: string;

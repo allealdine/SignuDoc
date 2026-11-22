@@ -8,11 +8,11 @@ import {
   getPublicEnvelopeDownloadForToken,
 } from "@/lib/downloads";
 import { logRouteError } from "@/lib/security/logging";
+import { getClientIpAddress } from "@/lib/security/request";
 import {
   applyPublicLinkRateLimit,
   buildRateLimitKey,
 } from "@/lib/security/route-controls";
-import { getClientIpAddress } from "@/lib/security/request";
 import { resolveAppUrl } from "@/lib/utils/env";
 
 // Public download route for recipient email links only.

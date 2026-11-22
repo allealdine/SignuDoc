@@ -4,9 +4,17 @@ import {
   type DashboardFilter,
 } from "@/components/dashboard/dashboard-documents-surface";
 import { Brand } from "@/components/layout/brand";
-import { primaryNavItems } from "@/components/layout/nav-items";
+import { getPrimaryNavItems } from "@/components/layout/nav-items";
 import { cn } from "@/lib/cn";
+import { formatDashboardDate } from "@/lib/dashboard-labels.ts";
 import type { DashboardEnvelopeListItem } from "@/lib/envelopes";
+import { formatMessage } from "@/lib/i18n/format.ts";
+import type { Messages } from "@/lib/i18n/locales/en.ts";
+import { getMessages } from "@/lib/i18n/messages.ts";
+import { getRequestLocale } from "@/lib/i18n/request.ts";
+import type { Locale } from "@/lib/i18n/types.ts";
+
+type DashboardCopy = Messages["dashboard"];
 
 const previewUser = {
   initials: "AR",
@@ -14,55 +22,83 @@ const previewUser = {
 
 const previewFilter: DashboardFilter = "All";
 
-const previewEnvelopes: readonly DashboardEnvelopeListItem[] = [
-  {
-    contextLine: "2 signers · 6 fields placed",
-    createdAtLabel: "Mar 15, 2026",
-    id: "preview-draft",
-    searchableEmails: ["ops@northline.example", "legal@riverbank.example"],
-    status: "draft",
-    statusLabel: "Draft",
-    title: "Master Services Agreement",
-  },
-  {
-    contextLine: "Sent to: counsel@oakline.example, finance@aster.example",
-    createdAtLabel: "Mar 10, 2026",
-    id: "preview-completed",
-    searchableEmails: ["counsel@oakline.example", "finance@aster.example"],
-    status: "completed",
-    statusLabel: "Completed",
-    title: "Independent Contractor Agreement",
-  },
-  {
-    contextLine: "Waiting on: team@harbor.example",
-    createdAtLabel: "Mar 8, 2026",
-    id: "preview-sent",
-    searchableEmails: ["team@harbor.example"],
-    status: "sent",
-    statusLabel: "1 of 2 signed",
-    title: "NDA - Product Demo",
-  },
-  {
-    contextLine: "Voided on Mar 10, 2026",
-    createdAtLabel: "Mar 8, 2026",
-    id: "preview-voided",
-    searchableEmails: ["legal@atlas.example"],
-    status: "voided",
-    statusLabel: "Voided",
-    title: "Supplier Terms - Atlas",
-  },
-  {
-    contextLine: "Declined by: arivera@samplemail.example",
-    createdAtLabel: "Feb 27, 2026",
-    id: "preview-declined",
-    searchableEmails: ["arivera@samplemail.example"],
-    status: "declined",
-    statusLabel: "Declined",
-    title: "Offer Letter - A. Rivera",
-  },
-] as const;
+function buildPreviewEnvelopes(
+  copy: DashboardCopy,
+  locale: Locale,
+): readonly DashboardEnvelopeListItem[] {
+  const date = (month: number, day: number) =>
+    formatDashboardDate(Date.UTC(2026, month, day) / 1000, locale);
+  const context = copy.card.context;
+  const statuses = copy.card.statuses;
 
-export function LandingDashboardPreview() {
+  return [
+    {
+      contextLine: [
+        formatMessage(context.draftSignersPlural, { count: 2 }),
+        formatMessage(context.draftFieldsPlural, { count: 6 }),
+      ].join(" · "),
+      createdAtLabel: date(2, 15),
+      id: "preview-draft",
+      searchableEmails: ["ops@northline.example", "legal@riverbank.example"],
+      status: "draft",
+      statusLabel: statuses.draft,
+      title: "Master Services Agreement",
+    },
+    {
+      contextLine: formatMessage(context.completed, {
+        emails: "counsel@oakline.example, finance@aster.example",
+      }),
+      createdAtLabel: date(2, 10),
+      id: "preview-completed",
+      searchableEmails: ["counsel@oakline.example", "finance@aster.example"],
+      status: "completed",
+      statusLabel: statuses.completed,
+      title: "Independent Contractor Agreement",
+    },
+    {
+      contextLine: formatMessage(context.sentWaiting, {
+        emails: "team@harbor.example",
+      }),
+      createdAtLabel: date(2, 8),
+      id: "preview-sent",
+      searchableEmails: ["team@harbor.example"],
+      status: "sent",
+      statusLabel: formatMessage(statuses.signedProgress, {
+        signed: 1,
+        total: 2,
+      }),
+      title: "NDA - Product Demo",
+    },
+    {
+      contextLine: formatMessage(context.voided, { date: date(2, 10) }),
+      createdAtLabel: date(2, 8),
+      id: "preview-voided",
+      searchableEmails: ["legal@atlas.example"],
+      status: "voided",
+      statusLabel: statuses.voided,
+      title: "Supplier Terms - Atlas",
+    },
+    {
+      contextLine: formatMessage(context.declined, {
+        email: "arivera@samplemail.example",
+      }),
+      createdAtLabel: date(1, 27),
+      id: "preview-declined",
+      searchableEmails: ["arivera@samplemail.example"],
+      status: "declined",
+      statusLabel: statuses.declined,
+      title: "Offer Letter - A. Rivera",
+    },
+  ];
+}
+
+export async function LandingDashboardPreview() {
+  const locale = await getRequestLocale();
+  const messages = getMessages(locale);
+  const copy = messages.dashboard;
+  const previewNavItems = getPrimaryNavItems(messages.shell.nav);
+  const previewEnvelopes = buildPreviewEnvelopes(copy, locale);
+
   return (
     <div
       aria-hidden="true"
@@ -73,7 +109,7 @@ export function LandingDashboardPreview() {
           <div className="flex min-w-0 items-center gap-7">
             <Brand href="/" />
             <div className="hidden items-center gap-1 md:flex">
-              {primaryNavItems.map((item) => (
+              {previewNavItems.map((item) => (
                 <span
                   className={cn(
                     "inline-flex min-h-9 items-center rounded-[0.625rem] px-3.5 text-sm",
@@ -94,8 +130,9 @@ export function LandingDashboardPreview() {
         </div>
 
         <div className="space-y-5">
-          <DashboardDocumentsHeader interactive={false} />
+          <DashboardDocumentsHeader copy={copy} interactive={false} />
           <DashboardDocumentsPanel
+            copy={copy}
             envelopes={previewEnvelopes}
             filteredEnvelopes={previewEnvelopes}
             interactive={false}

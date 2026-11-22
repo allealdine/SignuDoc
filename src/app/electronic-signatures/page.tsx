@@ -2,20 +2,25 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 
 import { PublicDocumentShell } from "@/components/layout/public-document-shell";
-import {
-  EU_LIMITS,
-  PERMITTED_USE_VERSION,
-  US_EXCLUDED_DOCUMENTS,
-  WHAT_IT_IS,
-  WHAT_IT_IS_NOT,
-} from "@/lib/permitted-uses";
+import { SIGNUDOC_NAME } from "@/lib/branding.ts";
+import { formatMessage } from "@/lib/i18n/format.ts";
+import { getMessages } from "@/lib/i18n/messages.ts";
+import { getRequestLocale } from "@/lib/i18n/request.ts";
+import { formatLegalDate } from "@/lib/legal-date.ts";
+import { PERMITTED_USE_VERSION } from "@/lib/permitted-uses";
 import { getBranding } from "@/lib/settings";
 
-export const metadata: Metadata = {
-  description:
-    "Which documents can be signed here, and what kind of electronic signature this is.",
-  title: "Electronic signatures: what this is for",
-};
+const headingClassName =
+  "text-xl font-extrabold tracking-[-0.02em] text-(--fg)";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const copy = getMessages(await getRequestLocale()).permittedUse.metadata;
+
+  return {
+    description: copy.description,
+    title: copy.title,
+  };
+}
 
 function List({ items }: { items: string[] }) {
   return (
@@ -32,60 +37,63 @@ function List({ items }: { items: string[] }) {
 export default async function ElectronicSignaturesPage() {
   await connection();
 
-  const { productName } = await getBranding();
+  const [branding, locale] = await Promise.all([
+    getBranding(),
+    getRequestLocale(),
+  ]);
+  const copy = getMessages(locale).permittedUse;
+  const sections = copy.sections;
+  const formatCopy = (template: string) =>
+    formatMessage(template, {
+      platformName: SIGNUDOC_NAME,
+      productName: branding.productName,
+    });
+  const list = (items: string[]) => items.map(formatCopy);
 
   return (
     <PublicDocumentShell
-      description={`${productName} uses Signudoc to collect electronic signatures. This page says which documents that is meant for, and which it is not.`}
-      lastUpdated={PERMITTED_USE_VERSION}
-      title="What this is for"
+      description={formatCopy(copy.hero.description)}
+      lastUpdated={formatLegalDate(PERMITTED_USE_VERSION, locale)}
+      title={copy.hero.title}
     >
       <section className="space-y-3">
-        <h2 className="text-xl font-extrabold tracking-[-0.02em] text-(--fg)">
-          {WHAT_IT_IS.heading}
+        <h2 className={headingClassName}>
+          {formatCopy(sections.whatItIs.heading)}
         </h2>
-        <List items={WHAT_IT_IS.items} />
+        <List items={list(sections.whatItIs.items)} />
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-xl font-extrabold tracking-[-0.02em] text-(--fg)">
-          {WHAT_IT_IS_NOT.heading}
-        </h2>
-        <List items={WHAT_IT_IS_NOT.items} />
+        <h2 className={headingClassName}>{sections.indonesia.heading}</h2>
+        {sections.indonesia.paragraphs.map((paragraph) => (
+          <p key={paragraph}>{formatCopy(paragraph)}</p>
+        ))}
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-xl font-extrabold tracking-[-0.02em] text-(--fg)">
-          Do not send these documents (United States)
+        <h2 className={headingClassName}>
+          {formatCopy(sections.whatItIsNot.heading)}
         </h2>
-        <p>
-          The federal ESIGN Act (15 U.S.C. 7003) and the Uniform Electronic
-          Transactions Act adopted by the states leave these out, so an
-          electronic signature may not make them valid:
-        </p>
-        <List items={US_EXCLUDED_DOCUMENTS} />
+        <List items={list(sections.whatItIsNot.items)} />
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-xl font-extrabold tracking-[-0.02em] text-(--fg)">
-          Take care with these (European Union)
-        </h2>
-        <p>
-          eIDAS lets member states decide which documents need a stronger form.
-          Commonly these do:
-        </p>
-        <List items={EU_LIMITS} />
+        <h2 className={headingClassName}>{sections.usExcluded.heading}</h2>
+        <p>{sections.usExcluded.intro}</p>
+        <List items={list(sections.usExcluded.items)} />
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-xl font-extrabold tracking-[-0.02em] text-(--fg)">
-          Who decides
-        </h2>
-        <p>
-          {productName} runs this site and decides what it may be used for.
-          Before each send, the sender confirms the document is not one of the
-          kinds listed here. This page is general information, not legal advice.
-        </p>
+        <h2 className={headingClassName}>{sections.euLimits.heading}</h2>
+        <p>{sections.euLimits.intro}</p>
+        <List items={list(sections.euLimits.items)} />
+      </section>
+
+      <section className="space-y-3">
+        <h2 className={headingClassName}>{sections.whoDecides.heading}</h2>
+        {sections.whoDecides.paragraphs.map((paragraph) => (
+          <p key={paragraph}>{formatCopy(paragraph)}</p>
+        ))}
       </section>
     </PublicDocumentShell>
   );

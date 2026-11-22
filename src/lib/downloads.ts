@@ -7,12 +7,11 @@ import {
 } from "./db/connection.ts";
 import {
   downloadFileTypeSchema,
-  envelopeRecordSchema,
   type EnvelopeRecord,
+  envelopeRecordSchema,
 } from "./schemas/envelope.ts";
-import { truncateToWholeCharacters } from "./text-truncate.ts";
-import { fieldRecordSchema, type FieldRecord } from "./schemas/field.ts";
-import { signerRecordSchema, type SignerRecord } from "./schemas/signer.ts";
+import { type FieldRecord, fieldRecordSchema } from "./schemas/field.ts";
+import { type SignerRecord, signerRecordSchema } from "./schemas/signer.ts";
 import { listAuditEventsForEnvelope } from "./services/audit.ts";
 import {
   type IssuedDownloadLink,
@@ -30,7 +29,8 @@ import {
   type StorageService,
 } from "./services/storage.ts";
 import { getRecipientCertificateKey } from "./services/storage-keys.ts";
-import { type DownloadFileType } from "./types/domain.ts";
+import { truncateToWholeCharacters } from "./text-truncate.ts";
+import type { DownloadFileType } from "./types/domain.ts";
 
 type EnvelopeRow = {
   completedAt: number | null;
@@ -73,6 +73,7 @@ type SignerRow = {
   id: string;
   lastNotifiedAt: number | null;
   lastNudgedAt: number | null;
+  locale?: string | null;
   name: string;
   signedAt: number | null;
   signOrder: number;
@@ -154,6 +155,7 @@ function mapSignerRow(row: SignerRow): SignerRecord {
     id: row.id,
     lastNotifiedAt: row.lastNotifiedAt,
     lastNudgedAt: row.lastNudgedAt,
+    locale: row.locale ?? null,
     name: row.name,
     signOrder: row.signOrder,
     signingStep: row.signingStep ?? null,
@@ -309,6 +311,7 @@ async function getSignerForEnvelope(
         turn_started_at AS "turnStartedAt",
         last_notified_at AS "lastNotifiedAt",
         last_nudged_at AS "lastNudgedAt",
+        locale,
         signed_at AS "signedAt",
         declined_at AS "declinedAt",
         decline_reason AS "declineReason",

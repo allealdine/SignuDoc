@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { getDb, queryOne, type DbExecutor } from "../db/connection.ts";
+import { type DbExecutor, getDb, queryOne } from "../db/connection.ts";
 import { isMissingSchemaError } from "../settings.ts";
 import { requireVerifiedSenderSession } from "./route-session.ts";
 

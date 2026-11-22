@@ -6,15 +6,15 @@ import {
   withTransaction,
 } from "./db/connection.ts";
 import { findRecordKeeper } from "./people.ts";
-import {
-  buildEnvelopeThumbnailKey,
-  getRecipientCertificateKey,
-} from "./services/storage-keys.ts";
+import { createEmailService, type EmailService } from "./services/email.ts";
 import {
   createStorageService,
   type StorageService,
 } from "./services/storage.ts";
-import { createEmailService, type EmailService } from "./services/email.ts";
+import {
+  buildEnvelopeThumbnailKey,
+  getRecipientCertificateKey,
+} from "./services/storage-keys.ts";
 import { recordSystemAuditEvent } from "./services/system-audit.ts";
 import { readStoredSettings } from "./settings.ts";
 import { type EnvSource, isHostedMode, resolveAppUrl } from "./utils/env.ts";

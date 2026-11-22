@@ -234,11 +234,12 @@ type PlacedText = {
 /** Where pdf.js finds a piece of text on the first page. */
 async function findText(pdfBytes: Uint8Array, text: string) {
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
-  const document = await pdfjs.getDocument({
+  const loadingTask = pdfjs.getDocument({
     data: new Uint8Array(pdfBytes),
     useSystemFonts: false,
     verbosity: 0,
-  }).promise;
+  });
+  const document = await loadingTask.promise;
   const page = await document.getPage(1);
   const viewport = page.getViewport({ scale: 1 });
   const content = await page.getTextContent();
@@ -253,7 +254,7 @@ async function findText(pdfBytes: Uint8Array, text: string) {
       }
     : null;
 
-  await document.destroy();
+  await loadingTask.destroy();
 
   return placed;
 }

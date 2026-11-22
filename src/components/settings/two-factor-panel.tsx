@@ -1,16 +1,17 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
+import { type FormEvent, useMemo, useState } from "react";
 import { encode } from "uqr";
 
 import { useBranding } from "@/components/layout/branding-provider";
 import { FieldShell, ShellButton } from "@/components/shared/form-shell";
+import { formatMessage } from "@/lib/i18n/format.ts";
+import type { Messages } from "@/lib/i18n/locales/en.ts";
+import { useMessages } from "@/lib/i18n/messages-provider.tsx";
 
 // Two-step sign-in for the signed-in person: set it up with an
 // authenticator app, make new backup codes, or turn it off. The work is
 // done by Better Auth's two-factor endpoints under /api/auth/two-factor.
-
-const GENERIC_ERROR_MESSAGE = "Something went wrong. Please try again.";
 
 type Step =
   | { kind: "idle" }
@@ -38,16 +39,18 @@ async function postAuth(path: string, body: unknown) {
   return { ok: response.ok, payload };
 }
 
-function describeAuthError(payload: ApiPayload): string {
+type TwoFactorCopy = Messages["settings"]["twoFactor"];
+
+function describeAuthError(payload: ApiPayload, copy: TwoFactorCopy): string {
   switch (payload?.code) {
     case "INVALID_PASSWORD":
-      return "That password is not right.";
+      return copy.errors.invalidPassword;
     case "INVALID_CODE":
-      return "That code is not right. Check the time on your phone and try the newest code.";
+      return copy.errors.invalidCode;
     case "TWO_FACTOR_REQUIRED_BY_ADMINISTRATOR":
-      return payload.message ?? GENERIC_ERROR_MESSAGE;
+      return payload.message ?? copy.errors.generic;
     default:
-      return payload?.message ?? GENERIC_ERROR_MESSAGE;
+      return payload?.message ?? copy.errors.generic;
   }
 }
 
@@ -65,6 +68,7 @@ function groupSecret(secret: string): string {
 }
 
 function QrCode({ value }: { value: string }) {
+  const copy = useMessages().messages.settings.twoFactor;
   const path = useMemo(() => {
     const { data, size } = encode(value, { border: 2, ecc: "M" });
     const parts: string[] = [];
@@ -82,7 +86,7 @@ function QrCode({ value }: { value: string }) {
 
   return (
     <svg
-      aria-label="QR code for your authenticator app"
+      aria-label={copy.qrAriaLabel}
       className="h-48 w-48 rounded-lg bg-white p-1"
       role="img"
       shapeRendering="crispEdges"
@@ -101,28 +105,25 @@ function BackupCodes({
   codes: string[];
   productName: string;
 }) {
+  const copy = useMessages().messages.settings.twoFactor.backupCodes;
   const download = useMemo(() => {
     const text = [
-      `${productName} backup codes`,
+      formatMessage(copy.fileTitle, { productName }),
       "",
-      "Each code works once, in place of a code from your authenticator app.",
+      copy.fileLine,
       "",
       ...codes,
       "",
     ].join("\n");
 
     return `data:text/plain;charset=utf-8,${encodeURIComponent(text)}`;
-  }, [codes, productName]);
+  }, [codes, copy.fileLine, copy.fileTitle, productName]);
 
   return (
     <div className="space-y-3">
-      <p className="text-sm leading-6 text-(--secondary)">
-        Keep these backup codes somewhere safe, such as your password manager.
-        Each one works once, in place of a code from your app, if you lose your
-        phone. You will not see them again.
-      </p>
+      <p className="text-sm leading-6 text-(--secondary)">{copy.description}</p>
       <ul
-        aria-label="Backup codes"
+        aria-label={copy.ariaLabel}
         className="well grid grid-cols-2 gap-2 p-4 font-mono text-sm sm:grid-cols-5"
       >
         {codes.map((code) => (
@@ -130,7 +131,7 @@ function BackupCodes({
         ))}
       </ul>
       <a className="btn-quiet" download="backup-codes.txt" href={download}>
-        Download codes
+        {copy.download}
       </a>
     </div>
   );
@@ -144,6 +145,7 @@ export function TwoFactorPanel({
   required: boolean;
 }) {
   const { productName } = useBranding();
+  const copy = useMessages().messages.settings.twoFactor;
   const [step, setStep] = useState<Step>({ kind: "idle" });
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
@@ -171,7 +173,7 @@ export function TwoFactorPanel({
     }
 
     if (!password) {
-      setFeedback({ message: "Enter your password.", tone: "error" });
+      setFeedback({ message: copy.errors.passwordRequired, tone: "error" });
       return;
     }
 
@@ -186,7 +188,10 @@ export function TwoFactorPanel({
         });
 
         if (!ok || !payload?.totpURI || !payload.backupCodes) {
-          setFeedback({ message: describeAuthError(payload), tone: "error" });
+          setFeedback({
+            message: describeAuthError(payload, copy),
+            tone: "error",
+          });
           return;
         }
 
@@ -207,7 +212,10 @@ export function TwoFactorPanel({
         );
 
         if (!ok || !payload?.backupCodes) {
-          setFeedback({ message: describeAuthError(payload), tone: "error" });
+          setFeedback({
+            message: describeAuthError(payload, copy),
+            tone: "error",
+          });
           return;
         }
 
@@ -221,14 +229,17 @@ export function TwoFactorPanel({
       });
 
       if (!ok) {
-        setFeedback({ message: describeAuthError(payload), tone: "error" });
+        setFeedback({
+          message: describeAuthError(payload, copy),
+          tone: "error",
+        });
         return;
       }
 
       // The session was replaced; reload so every part of the page agrees.
       window.location.reload();
     } catch {
-      setFeedback({ message: GENERIC_ERROR_MESSAGE, tone: "error" });
+      setFeedback({ message: copy.errors.generic, tone: "error" });
     } finally {
       setIsBusy(false);
     }
@@ -245,7 +256,7 @@ export function TwoFactorPanel({
 
     if (!/^\d{6}$/.test(trimmed)) {
       setFeedback({
-        message: "Enter the 6-digit code your app shows.",
+        message: copy.errors.totpRequired,
         tone: "error",
       });
       return;
@@ -260,13 +271,16 @@ export function TwoFactorPanel({
       });
 
       if (!ok) {
-        setFeedback({ message: describeAuthError(payload), tone: "error" });
+        setFeedback({
+          message: describeAuthError(payload, copy),
+          tone: "error",
+        });
         return;
       }
 
       window.location.reload();
     } catch {
-      setFeedback({ message: GENERIC_ERROR_MESSAGE, tone: "error" });
+      setFeedback({ message: copy.errors.generic, tone: "error" });
     } finally {
       setIsBusy(false);
     }
@@ -277,18 +291,15 @@ export function TwoFactorPanel({
       <div className="space-y-5">
         <div className="flex flex-wrap items-center gap-3">
           <h2 className="text-xl font-extrabold tracking-[-0.02em] text-(--fg)">
-            Two-step sign-in
+            {copy.title}
           </h2>
           <span className={`pill ${enabled ? "pill-success" : "pill-neutral"}`}>
-            {enabled ? "On" : "Off"}
+            {enabled ? copy.on : copy.off}
           </span>
         </div>
         <p className="max-w-2xl text-sm leading-6 text-(--secondary)">
-          After your password, {productName} asks for a 6-digit code from an
-          authenticator app on your phone, such as 1Password, Google
-          Authenticator or Microsoft Authenticator. Someone who learns your
-          password still cannot sign in.
-          {required ? " Your organization requires it." : ""}
+          {formatMessage(copy.description, { productName })}
+          {required ? copy.descriptionRequired : ""}
         </p>
 
         {feedback ? (
@@ -305,20 +316,20 @@ export function TwoFactorPanel({
             {enabled ? (
               <>
                 <ShellButton onClick={() => start("codes")} variant="secondary">
-                  Make new backup codes
+                  {copy.makeNewCodes}
                 </ShellButton>
                 {required ? null : (
                   <ShellButton
                     onClick={() => start("disable")}
                     variant="secondary"
                   >
-                    Turn off two-step sign-in
+                    {copy.status.off}
                   </ShellButton>
                 )}
               </>
             ) : (
               <ShellButton className="w-fit" onClick={() => start("enable")}>
-                Set up two-step sign-in
+                {copy.setUp}
               </ShellButton>
             )}
           </div>
@@ -330,7 +341,7 @@ export function TwoFactorPanel({
               <FieldShell
                 autoComplete="current-password"
                 disabled={isBusy}
-                label="Your password"
+                label={copy.passwordLabel}
                 name="two-factor-password"
                 onChange={(event) => {
                   setPassword(event.target.value);
@@ -344,17 +355,17 @@ export function TwoFactorPanel({
             <div className="flex flex-col gap-3 sm:flex-row">
               <ShellButton loading={isBusy} type="submit">
                 {step.purpose === "enable"
-                  ? "Continue"
+                  ? copy.confirm.continue
                   : step.purpose === "codes"
-                    ? "Make new codes"
-                    : "Turn off"}
+                    ? copy.confirm.newCodes
+                    : copy.confirm.off}
               </ShellButton>
               <ShellButton
                 disabled={isBusy}
                 onClick={cancel}
                 variant="secondary"
               >
-                Cancel
+                {copy.cancel}
               </ShellButton>
             </div>
           </form>
@@ -366,10 +377,10 @@ export function TwoFactorPanel({
               <QrCode value={step.totpURI} />
               <div className="space-y-2 text-sm leading-6 text-(--secondary)">
                 <p>
-                  <span className="font-semibold text-(--fg)">1.</span> Scan
-                  this code with your authenticator app.
+                  <span className="font-semibold text-(--fg)">1.</span>{" "}
+                  {copy.scan.step}
                 </p>
-                <p>Or type in this key:</p>
+                <p>{copy.scan.manual}</p>
                 <p className="font-mono text-(--fg)" data-testid="totp-secret">
                   {groupSecret(readSecret(step.totpURI))}
                 </p>
@@ -378,20 +389,20 @@ export function TwoFactorPanel({
 
             <div className="space-y-2">
               <p className="text-sm font-semibold text-(--fg)">
-                2. Save your backup codes
+                2. {copy.steps.backupCodes}
               </p>
               <BackupCodes codes={step.backupCodes} productName={productName} />
             </div>
 
             <form className="space-y-4" noValidate onSubmit={handleCode}>
               <p className="text-sm font-semibold text-(--fg)">
-                3. Enter the code your app shows
+                3. {copy.steps.code}
               </p>
               <div className="max-w-xs">
                 <FieldShell
                   autoComplete="one-time-code"
                   disabled={isBusy}
-                  label="6-digit code"
+                  label={copy.totpLabel}
                   name="two-factor-setup-code"
                   onChange={(event) => {
                     setCode(event.target.value);
@@ -403,14 +414,14 @@ export function TwoFactorPanel({
               </div>
               <div className="flex flex-col gap-3 sm:flex-row">
                 <ShellButton loading={isBusy} type="submit">
-                  Turn on two-step sign-in
+                  {copy.status.on}
                 </ShellButton>
                 <ShellButton
                   disabled={isBusy}
                   onClick={cancel}
                   variant="secondary"
                 >
-                  Cancel
+                  {copy.cancel}
                 </ShellButton>
               </div>
             </form>
@@ -420,11 +431,11 @@ export function TwoFactorPanel({
         {step.kind === "new-codes" ? (
           <div className="space-y-4">
             <p className="notice notice-success" role="status">
-              New backup codes made. The old ones no longer work.
+              {copy.backupCodes.new}
             </p>
             <BackupCodes codes={step.backupCodes} productName={productName} />
             <ShellButton className="w-fit" onClick={cancel} variant="secondary">
-              Done
+              {copy.done}
             </ShellButton>
           </div>
         ) : null}

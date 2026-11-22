@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type ChangeEvent } from "react";
+import { type ChangeEvent, useRef, useState } from "react";
 
 import {
   ChevronLeftIcon,
@@ -11,24 +11,23 @@ import { PageHeader } from "@/components/shared/page-header";
 import { StatusPanel } from "@/components/shared/status-panel";
 import { StepIndicator } from "@/components/shared/step-indicator";
 import type { DraftSignerStepData } from "@/lib/envelopes";
-import {
-  duplicateCopyRecipientEmailMessage,
-  duplicateSignerEmailMessage,
-  type ReplaceSignersResponse,
-} from "@/lib/schemas/signer";
-import { SIGNATURE_MEANING_DETAILS } from "@/lib/signature-meanings";
+import { formatMessage } from "@/lib/i18n/format.ts";
+import type { Messages } from "@/lib/i18n/locales/en.ts";
+import { useMessages } from "@/lib/i18n/messages-provider.tsx";
+import type { ReplaceSignersResponse } from "@/lib/schemas/signer";
 import { moveListedSigner, removeListedSigner } from "@/lib/signing-steps";
 import {
   DEFAULT_MAX_SIGNERS_PER_ENVELOPE,
   MAX_COPY_RECIPIENTS_PER_ENVELOPE,
-  signatureMeanings,
   type SignatureMeaning,
+  signatureMeanings,
 } from "@/lib/types/domain";
 import { getSignerPalette } from "./signer-palette";
 
-const envelopeSteps = ["Upload", "Signers", "Place fields", "Review"];
 const validEmailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const genericSubmitError = "Something went wrong. Please try again.";
+
+type SignersCopy = Messages["envelope"]["signers"];
+type SignerValidationCopy = SignersCopy["validation"];
 
 type SignersShellProps = {
   envelopeId: string;
@@ -136,24 +135,18 @@ function computeSigningSteps(
   return steps;
 }
 
-type SignerCheckChoice = "access_code" | "email_code" | "none";
-
 // One check per signer. The server still honours both at once (the signer
 // must then pass both), which older envelopes and API callers may have set.
-const SIGNER_CHECK_CHOICES: readonly {
-  label: string;
-  value: SignerCheckChoice;
-}[] = [
-  { label: "No extra check", value: "none" },
-  {
-    label: "Email them a one-time code when they open the link",
-    value: "email_code",
-  },
-  {
-    label: "Ask for an access code you give them yourself",
-    value: "access_code",
-  },
-];
+// Labels live in the dictionary; these values are the wire/internal values.
+const SIGNER_CHECK_VALUES = ["none", "email_code", "access_code"] as const;
+
+type SignerCheckChoice = (typeof SIGNER_CHECK_VALUES)[number];
+
+const signerCheckCopyKeys = {
+  access_code: "accessCode",
+  email_code: "emailCode",
+  none: "none",
+} as const;
 
 function signerCheckChoice(
   signer: Pick<SignerChecks, "requireEmailCode" | "wantsAccessCode">,
@@ -202,6 +195,7 @@ function buildInitialModel(record?: DraftSignerStepData): InitialModel {
 function buildCopyRecipientErrors(
   copyRecipients: readonly ShellCopyRecipient[],
   signers: readonly ShellSigner[],
+  copy: SignerValidationCopy,
 ) {
   const errorsByLocalId: Record<string, SignerErrors> = {};
   const taken = new Set(
@@ -215,16 +209,16 @@ function buildCopyRecipientErrors(
     const normalizedEmail = recipient.email.trim().toLowerCase();
 
     if (recipient.name.trim().length === 0) {
-      errors.name = "Name is required";
+      errors.name = copy.nameRequired;
     }
 
     if (
       normalizedEmail.length === 0 ||
       !validEmailPattern.test(normalizedEmail)
     ) {
-      errors.email = "Enter a valid email address";
+      errors.email = copy.emailInvalid;
     } else if (taken.has(normalizedEmail)) {
-      errors.email = duplicateCopyRecipientEmailMessage;
+      errors.email = copy.duplicateCopy;
     }
 
     taken.add(normalizedEmail);
@@ -234,7 +228,10 @@ function buildCopyRecipientErrors(
   return errorsByLocalId;
 }
 
-function buildSignerErrors(signers: readonly ShellSigner[]) {
+function buildSignerErrors(
+  signers: readonly ShellSigner[],
+  copy: SignerValidationCopy,
+) {
   const errorsBySignerId: Record<string, SignerErrors> = {};
   const emailCounts = signers.reduce<Record<string, number>>(
     (counts, signer) => {
@@ -255,28 +252,28 @@ function buildSignerErrors(signers: readonly ShellSigner[]) {
     const normalizedEmail = signer.email.trim().toLowerCase();
 
     if (normalizedName.length === 0) {
-      signerErrors.name = "Name is required";
+      signerErrors.name = copy.nameRequired;
     }
 
     if (
       normalizedEmail.length === 0 ||
       !validEmailPattern.test(normalizedEmail)
     ) {
-      signerErrors.email = "Enter a valid email address";
+      signerErrors.email = copy.emailInvalid;
     } else if (emailCounts[normalizedEmail] > 1) {
-      signerErrors.email = duplicateSignerEmailMessage;
+      signerErrors.email = copy.duplicateSigner;
     }
 
     const accessCode = signer.accessCode.trim();
     const keepsSavedCode = signer.hasAccessCode && !signer.removeAccessCode;
 
     if (signer.wantsAccessCode && accessCode.length === 0 && !keepsSavedCode) {
-      signerErrors.accessCode = "Type the code you will give them";
+      signerErrors.accessCode = copy.accessCodeRequired;
     } else if (
       accessCode.length > 0 &&
       (accessCode.length < 4 || accessCode.length > 64)
     ) {
-      signerErrors.accessCode = "Use 4 to 64 characters";
+      signerErrors.accessCode = copy.accessCodeLength;
     }
 
     errorsBySignerId[signer.localId] = signerErrors;
@@ -335,9 +332,12 @@ function buildSignerRequest(
 
 async function parseJsonResponse<T>(
   response: Response,
+  fallbackError: string,
 ): Promise<{ data: T | null; error: string | null }> {
   const payload = (await response.json().catch(() => null)) as
-    { error?: string } | T | null;
+    | { error?: string }
+    | T
+    | null;
 
   if (!response.ok) {
     return {
@@ -348,7 +348,7 @@ async function parseJsonResponse<T>(
         "error" in payload &&
         typeof payload.error === "string"
           ? payload.error
-          : genericSubmitError,
+          : fallbackError,
     };
   }
 
@@ -373,7 +373,9 @@ function SignerCard({
   onRemove,
   onTogetherChange,
   accessCodeError,
+  copy,
   part11Mode = false,
+  previousStepIsPlural,
   previousStepLabel,
   showStep,
   signer,
@@ -381,9 +383,12 @@ function SignerCard({
   stepSize,
 }: {
   accessCodeError?: string;
+  copy: SignersCopy;
   part11Mode?: boolean;
   /** Who signs in the step before this signer's, as "Signer 2". */
   previousStepLabel: string | null;
+  /** Keeps English "finish"/"finishes" correct without parsing the label. */
+  previousStepIsPlural: boolean;
   /** Some signers share a step, so every card says which step it is in. */
   showStep: boolean;
   /** This signer's step of the signing order. */
@@ -407,6 +412,10 @@ function SignerCard({
 }) {
   const keepsSavedCode = signer.hasAccessCode && !signer.removeAccessCode;
   const checkChoice = signerCheckChoice(signer);
+  const checkChoices = SIGNER_CHECK_VALUES.map((value) => ({
+    label: copy.checks.options[signerCheckCopyKeys[value]],
+    value,
+  }));
   const choosePatch = (choice: SignerCheckChoice): Partial<SignerChecks> =>
     choice === "access_code"
       ? {
@@ -423,19 +432,26 @@ function SignerCard({
   const palette = getSignerPalette(index);
   const order = index + 1;
   const together = index > 0 && signer.withPrevious && !part11Mode;
-  const previous = previousStepLabel ?? `Signer ${String(order - 1)}`;
-  const finishes = previous.includes(" and ") ? "finish" : "finishes";
+  const previous =
+    previousStepLabel ?? formatMessage(copy.signer.label, { order: order - 1 });
+  const finishVerb = previousStepIsPlural
+    ? copy.route.finishPlural
+    : copy.route.finishSingular;
   let routeLabel: string;
 
   if (step === 1) {
     routeLabel =
-      stepSize > 1
-        ? "Receives the invitation immediately after send, and signs at the same time as the others in step 1."
-        : "Receives the invitation immediately after send.";
+      stepSize > 1 ? copy.route.firstParallel : copy.route.firstImmediate;
   } else if (together) {
-    routeLabel = `Signs at the same time as Signer ${String(order - 1)}, once ${previous} ${finishes}.`;
+    routeLabel = formatMessage(copy.route.parallel, {
+      previous,
+      finishVerb,
+    });
   } else {
-    routeLabel = `Receives the document after ${previous} ${finishes}.`;
+    routeLabel = formatMessage(copy.route.sequential, {
+      previous,
+      finishVerb,
+    });
   }
 
   return (
@@ -455,8 +471,8 @@ function SignerCard({
                 className="size-2 rounded-full"
                 style={{ backgroundColor: palette.color }}
               />
-              Signer {order}
-              {showStep ? ` · Step ${String(step)}` : ""}
+              {formatMessage(copy.signer.label, { order })}
+              {showStep ? formatMessage(copy.signer.step, { step }) : ""}
             </span>
             <p className="text-[0.8125rem] leading-5 text-(--secondary)">
               {routeLabel}
@@ -472,40 +488,42 @@ function SignerCard({
                   }
                   type="checkbox"
                 />
-                Sign at the same time as Signer {order - 1}
+                {formatMessage(copy.signer.together, { order: order - 1 })}
               </label>
             ) : null}
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
             <button
-              aria-label={`Move signer ${order} earlier`}
+              aria-label={formatMessage(copy.signer.aria.moveEarlier, {
+                order,
+              })}
               className="btn-quiet"
               disabled={disabled || !canMoveEarlier}
               onClick={() => onMove("earlier")}
               type="button"
             >
               <ChevronLeftIcon aria-hidden="true" className="-ml-1 size-4" />
-              Earlier
+              {copy.signer.moveEarlier}
             </button>
             <button
-              aria-label={`Move signer ${order} later`}
+              aria-label={formatMessage(copy.signer.aria.moveLater, { order })}
               className="btn-quiet"
               disabled={disabled || !canMoveLater}
               onClick={() => onMove("later")}
               type="button"
             >
-              Later
+              {copy.signer.moveLater}
               <ChevronRightIcon aria-hidden="true" className="-mr-1 size-4" />
             </button>
             <button
-              aria-label={`Remove signer ${order}`}
+              aria-label={formatMessage(copy.signer.aria.remove, { order })}
               className="btn-quiet btn-quiet-danger"
               disabled={disabled || !canRemove}
               onClick={onRemove}
               type="button"
             >
-              Remove
+              {copy.actions.remove}
             </button>
           </div>
         </div>
@@ -513,11 +531,11 @@ function SignerCard({
         <div className="grid gap-x-4 gap-y-1 md:grid-cols-2">
           <label className="grid auto-rows-min gap-1.5">
             <span className="text-[0.8125rem] font-semibold text-(--secondary)">
-              Name
+              {copy.fields.name}
             </span>
             <input
               aria-invalid={nameError ? true : undefined}
-              aria-label={`Signer ${order} name`}
+              aria-label={formatMessage(copy.signer.aria.name, { order })}
               className="field-input"
               disabled={disabled}
               onChange={(event: ChangeEvent<HTMLInputElement>) =>
@@ -541,11 +559,11 @@ function SignerCard({
 
           <label className="grid auto-rows-min gap-1.5">
             <span className="text-[0.8125rem] font-semibold text-(--secondary)">
-              Email
+              {copy.fields.email}
             </span>
             <input
               aria-invalid={emailError ? true : undefined}
-              aria-label={`Signer ${order} email`}
+              aria-label={formatMessage(copy.signer.aria.email, { order })}
               className="field-input"
               disabled={disabled}
               onChange={(event: ChangeEvent<HTMLInputElement>) =>
@@ -571,17 +589,14 @@ function SignerCard({
         {part11Mode ? (
           <label className="grid gap-2 rounded-2xl bg-white p-4 text-sm text-(--fg) sm:p-5">
             <span className="font-bold text-(--fg)">
-              What this signature means
+              {copy.signatureMeaning.title}
             </span>
             <span className="text-[0.8125rem] leading-5 text-(--secondary)">
-              Part 11 mode is on. The meaning is printed beside the signature
-              with the signer&apos;s name and the time. The signer needs an
-              account here with a confirmed email address, and an administrator
-              must have confirmed who they are.
+              {copy.signatureMeaning.description}
             </span>
             <select
               aria-invalid={!signer.signatureMeaning ? true : undefined}
-              aria-label={`Signer ${order} signature meaning`}
+              aria-label={formatMessage(copy.signer.aria.meaning, { order })}
               className="field-input"
               disabled={disabled}
               onChange={(event: ChangeEvent<HTMLSelectElement>) =>
@@ -595,42 +610,48 @@ function SignerCard({
               }
               value={signer.signatureMeaning ?? ""}
             >
-              <option value="">Choose a meaning</option>
+              <option value="">{copy.signatureMeaning.choose}</option>
               {signatureMeanings.map((meaning) => (
                 <option key={meaning} value={meaning}>
-                  {SIGNATURE_MEANING_DETAILS[meaning].label}
+                  {copy.signatureMeaning.options[meaning].label}
                 </option>
               ))}
             </select>
             {signer.signatureMeaning ? (
               <span className="text-[0.8125rem] leading-5 text-(--secondary)">
-                {SIGNATURE_MEANING_DETAILS[signer.signatureMeaning].statement}
+                {
+                  copy.signatureMeaning.options[signer.signatureMeaning]
+                    .statement
+                }
               </span>
             ) : null}
           </label>
         ) : null}
 
         <fieldset className="grid gap-3 rounded-2xl bg-white p-4 text-sm text-(--fg) sm:p-5">
-          <legend className="sr-only">Extra check before signing</legend>
+          <legend className="sr-only">{copy.checks.legend}</legend>
           <p className="font-bold text-(--fg)">
-            Extra check before signing{" "}
-            <span className="font-normal text-(--secondary)">(optional)</span>
+            {copy.checks.title}{" "}
+            <span className="font-normal text-(--secondary)">
+              {copy.checks.optional}
+            </span>
           </p>
           <p className="text-[0.8125rem] leading-5 text-(--secondary)">
-            By default anyone holding the emailed link can sign. Pick a check
-            when the signer&apos;s identity matters.
+            {copy.checks.description}
           </p>
           {checkChoice === "both" ? (
             <p className="text-[0.8125rem] leading-5 text-(--secondary)">
-              This signer has both an emailed code and an access code, so they
-              must pass both. Picking one option below removes the other.
+              {copy.checks.bothNotice}
             </p>
           ) : null}
           <div className="grid gap-2" role="radiogroup">
-            {SIGNER_CHECK_CHOICES.map((choice) => (
+            {checkChoices.map((choice) => (
               <label className="flex items-start gap-3" key={choice.value}>
                 <input
-                  aria-label={`Signer ${order} check: ${choice.label}`}
+                  aria-label={formatMessage(copy.signer.aria.check, {
+                    order,
+                    label: choice.label,
+                  })}
                   checked={checkChoice === choice.value}
                   className="mt-0.5 size-4.5 shrink-0 cursor-pointer accent-(--accent)"
                   disabled={disabled}
@@ -646,14 +667,14 @@ function SignerCard({
           {signer.wantsAccessCode ? (
             <label className="grid gap-2">
               <span className="text-[0.8125rem] font-semibold text-(--secondary)">
-                Access code you will give them yourself, for example by phone
-                {keepsSavedCode
-                  ? " (a code is set; type a new one to change it)"
-                  : ""}
+                {copy.checks.accessCode.label}
+                {keepsSavedCode ? copy.checks.accessCode.hint : ""}
               </span>
               <input
                 aria-invalid={accessCodeError ? true : undefined}
-                aria-label={`Signer ${order} access code`}
+                aria-label={formatMessage(copy.signer.aria.accessCode, {
+                  order,
+                })}
                 autoComplete="off"
                 className="field-input"
                 disabled={disabled}
@@ -662,7 +683,9 @@ function SignerCard({
                   onChecksChange({ accessCode: event.target.value })
                 }
                 placeholder={
-                  keepsSavedCode ? "••••••" : "At least 4 characters"
+                  keepsSavedCode
+                    ? copy.checks.accessCode.placeholderSaved
+                    : copy.checks.accessCode.placeholder
                 }
                 type="text"
                 value={signer.accessCode}
@@ -684,6 +707,7 @@ function SignerCard({
 }
 
 function CopyRecipientCard({
+  copy,
   disabled = false,
   emailError,
   index,
@@ -693,6 +717,7 @@ function CopyRecipientCard({
   onRemove,
   recipient,
 }: {
+  copy: SignersCopy;
   disabled?: boolean;
   emailError?: string;
   index: number;
@@ -708,33 +733,39 @@ function CopyRecipientCard({
     <li className="well p-4 sm:p-5">
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between gap-3">
-          <span className="pill pill-neutral">Copy {position}</span>
+          <span className="pill pill-neutral">
+            {formatMessage(copy.copyRecipient.label, { position })}
+          </span>
           <button
-            aria-label={`Remove copy recipient ${position}`}
+            aria-label={formatMessage(copy.copyRecipient.aria.remove, {
+              position,
+            })}
             className="btn-quiet btn-quiet-danger"
             disabled={disabled}
             onClick={onRemove}
             type="button"
           >
-            Remove
+            {copy.actions.remove}
           </button>
         </div>
 
         <div className="grid gap-x-4 gap-y-1 md:grid-cols-2">
           <label className="grid auto-rows-min gap-1.5">
             <span className="text-[0.8125rem] font-semibold text-(--secondary)">
-              Name
+              {copy.fields.name}
             </span>
             <input
               aria-invalid={nameError ? true : undefined}
-              aria-label={`Copy recipient ${position} name`}
+              aria-label={formatMessage(copy.copyRecipient.aria.name, {
+                position,
+              })}
               className="field-input"
               disabled={disabled}
               onBlur={() => onBlur("name")}
               onChange={(event: ChangeEvent<HTMLInputElement>) =>
                 onChange("name", event.target.value)
               }
-              placeholder="Alex Jones"
+              placeholder={copy.copyRecipient.namePlaceholder}
               type="text"
               value={recipient.name}
             />
@@ -751,18 +782,20 @@ function CopyRecipientCard({
 
           <label className="grid auto-rows-min gap-1.5">
             <span className="text-[0.8125rem] font-semibold text-(--secondary)">
-              Email
+              {copy.fields.email}
             </span>
             <input
               aria-invalid={emailError ? true : undefined}
-              aria-label={`Copy recipient ${position} email`}
+              aria-label={formatMessage(copy.copyRecipient.aria.email, {
+                position,
+              })}
               className="field-input"
               disabled={disabled}
               onBlur={() => onBlur("email")}
               onChange={(event: ChangeEvent<HTMLInputElement>) =>
                 onChange("email", event.target.value)
               }
-              placeholder="alex@company.com"
+              placeholder={copy.copyRecipient.emailPlaceholder}
               type="email"
               value={recipient.email}
             />
@@ -801,11 +834,14 @@ export function SignersShell({
   const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const nextSignerNumberRef = useRef(initialModel.signers.length + 1);
+  const { messages } = useMessages();
+  const copy = messages.envelope.signers;
 
-  const errorsBySignerId = buildSignerErrors(signers);
+  const errorsBySignerId = buildSignerErrors(signers, copy.validation);
   const errorsByCopyRecipientId = buildCopyRecipientErrors(
     copyRecipients,
     signers,
+    copy.validation,
   );
   const maxSigners = record?.maxSigners ?? DEFAULT_MAX_SIGNERS_PER_ENVELOPE;
   const part11Mode = record?.part11Mode ?? false;
@@ -814,7 +850,9 @@ export function SignersShell({
   const hasSharedStep = new Set(signingSteps).size < signingSteps.length;
 
   /** "Signer 2", or "Signers 2 and 3", for the signers of one step. */
-  function describeStep(step: number): string | null {
+  function describeStep(
+    step: number,
+  ): { label: string; isPlural: boolean } | null {
     const places = signingSteps.flatMap((entry, index) =>
       entry === step ? [String(index + 1)] : [],
     );
@@ -823,9 +861,19 @@ export function SignersShell({
       return null;
     }
 
-    return places.length === 1
-      ? `Signer ${places[0]}`
-      : `Signers ${places.slice(0, -1).join(", ")} and ${places[places.length - 1]}`;
+    if (places.length === 1) {
+      return {
+        label: formatMessage(copy.signer.stepLabelOne, { order: places[0] }),
+        isPlural: false,
+      };
+    }
+
+    const orders = `${places.slice(0, -1).join(", ")} ${messages.common.and} ${places[places.length - 1]}`;
+
+    return {
+      label: formatMessage(copy.signer.stepLabelMany, { orders }),
+      isPlural: true,
+    };
   }
   const canAddCopyRecipient =
     copyRecipients.length < MAX_COPY_RECIPIENTS_PER_ENVELOPE;
@@ -1025,7 +1073,10 @@ export function SignersShell({
         },
         method: "PUT",
       });
-      const payload = await parseJsonResponse<ReplaceSignersResponse>(response);
+      const payload = await parseJsonResponse<ReplaceSignersResponse>(
+        response,
+        copy.validation.generic,
+      );
 
       if (payload.error) {
         setSubmissionError(payload.error);
@@ -1044,17 +1095,17 @@ export function SignersShell({
     return (
       <div className="space-y-5">
         <PageHeader
-          description="Step 2 of 4 - Add signers"
-          title="New envelope"
+          description={copy.header.description}
+          title={copy.header.title}
         />
-        <StepIndicator current={2} steps={envelopeSteps} />
+        <StepIndicator current={2} steps={messages.envelope.steps} />
         <StatusPanel
           action={{
             href: `/envelopes/${envelopeId}/signers`,
-            label: "Retry",
+            label: copy.error.retry,
           }}
-          description="We couldn't load this draft's signer list. Try again and confirm the upload step completed successfully."
-          title="Couldn't load signer setup"
+          description={copy.error.description}
+          title={copy.error.title}
           tone="error"
         />
       </div>
@@ -1064,11 +1115,11 @@ export function SignersShell({
   return (
     <div className="space-y-5">
       <PageHeader
-        description="Step 2 of 4 - Add signers"
-        title="New envelope"
+        description={copy.header.description}
+        title={copy.header.title}
       />
 
-      <StepIndicator current={2} steps={envelopeSteps} />
+      <StepIndicator current={2} steps={messages.envelope.steps} />
 
       <section
         className="panel p-5 sm:p-8"
@@ -1078,13 +1129,11 @@ export function SignersShell({
         <div className="space-y-5">
           <div className="space-y-1">
             <h2 className="text-lg font-extrabold text-(--fg)">
-              Signers will receive the document in this order.
+              {copy.intro.title}
             </h2>
             <p className="text-sm leading-6 text-(--secondary)">
-              Up to {maxSigners} signers per document.{" "}
-              {part11Mode
-                ? "In Part 11 mode each signer signs after the one before."
-                : "Signers who sign at the same time are invited together, and the next signer is invited once they have all signed."}
+              {formatMessage(copy.intro.limit, { maxSigners })}{" "}
+              {part11Mode ? copy.intro.part11 : copy.intro.parallel}
             </p>
           </div>
 
@@ -1105,12 +1154,14 @@ export function SignersShell({
                 showAllErrors || signer.touched.email
                   ? signerErrors.email
                   : undefined;
+              const previousStep = describeStep((signingSteps[index] ?? 1) - 1);
 
               return (
                 <SignerCard
                   canMoveEarlier={index > 0}
                   canMoveLater={index < signers.length - 1}
                   canRemove={signers.length > 1}
+                  copy={copy}
                   disabled={isSubmitting}
                   emailError={emailError}
                   index={index}
@@ -1132,9 +1183,8 @@ export function SignersShell({
                     handleSignerTogetherChange(signer.localId, together)
                   }
                   part11Mode={part11Mode}
-                  previousStepLabel={describeStep(
-                    (signingSteps[index] ?? 1) - 1,
-                  )}
+                  previousStepIsPlural={previousStep?.isPlural ?? false}
+                  previousStepLabel={previousStep?.label ?? null}
                   showStep={hasSharedStep}
                   signer={signer}
                   step={signingSteps[index] ?? index + 1}
@@ -1155,11 +1205,11 @@ export function SignersShell({
               onClick={handleAddSigner}
               type="button"
             >
-              + Add another signer
+              {copy.actions.addSigner}
             </button>
             {!canAddSigner ? (
               <p className="text-[0.8125rem] font-semibold text-(--tertiary)">
-                Maximum reached
+                {copy.actions.maximumReached}
               </p>
             ) : null}
           </div>
@@ -1167,14 +1217,13 @@ export function SignersShell({
           <div className="space-y-3 pt-3">
             <div className="space-y-1">
               <h2 className="text-lg font-extrabold text-(--fg)">
-                Send a copy to{" "}
+                {copy.copyIntro.title}{" "}
                 <span className="text-sm font-normal text-(--secondary)">
-                  (optional)
+                  {copy.copyIntro.optional}
                 </span>
               </h2>
               <p className="text-sm leading-6 text-(--secondary)">
-                These people do not sign. They receive the finished document and
-                its certificate once everyone has signed.
+                {copy.copyIntro.description}
               </p>
             </div>
 
@@ -1186,6 +1235,7 @@ export function SignersShell({
 
                   return (
                     <CopyRecipientCard
+                      copy={copy}
                       disabled={isSubmitting}
                       emailError={
                         showAllErrors || recipient.touched.email
@@ -1224,11 +1274,11 @@ export function SignersShell({
                 onClick={handleAddCopyRecipient}
                 type="button"
               >
-                + Add a copy recipient
+                {copy.actions.addCopy}
               </button>
               {!canAddCopyRecipient ? (
                 <p className="text-[0.8125rem] font-semibold text-(--tertiary)">
-                  Maximum reached
+                  {copy.actions.maximumReached}
                 </p>
               ) : null}
             </div>
@@ -1239,14 +1289,14 @@ export function SignersShell({
                 so Back goes to this draft's own page, where it can be
                 continued or deleted, not to a blank upload form. */}
             <ShellButton href={`/envelopes/${envelopeId}`} variant="secondary">
-              ← Back
+              {copy.actions.back}
             </ShellButton>
             <ShellButton
               disabled={!canContinue}
               loading={isSubmitting}
               onClick={handleContinue}
             >
-              Next →
+              {copy.actions.next}
             </ShellButton>
           </div>
         </div>

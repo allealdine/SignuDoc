@@ -8,13 +8,13 @@ import {
   recheckEmailDomain,
 } from "@/lib/email-status";
 import { sendTestEmail } from "@/lib/email-test";
-import { recordAdminActivity } from "@/lib/services/admin-activity";
 import { logRouteError } from "@/lib/security/logging";
+import { getClientIpAddress, getRequestPathname } from "@/lib/security/request";
 import {
   applyRateLimit,
   buildRateLimitKey,
 } from "@/lib/security/route-controls";
-import { getClientIpAddress, getRequestPathname } from "@/lib/security/request";
+import { recordAdminActivity } from "@/lib/services/admin-activity";
 
 // Email setup for the Organization tab in Settings: whether email works,
 // and the steps an administrator can take from the app when it does not.

@@ -2,7 +2,29 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 import { frameAncestorsFor } from "@/lib/embed-origin";
+import {
+  DEFAULT_LOCALE,
+  isLocale,
+  LOCALE_COOKIE,
+  LOCALE_COOKIE_MAX_AGE_SECONDS,
+  LOCALE_HEADER,
+  type Locale,
+  localeFromAcceptLanguage,
+} from "@/lib/i18n/types.ts";
 import { supportsDirectUploads } from "@/lib/services/storage/driver";
+
+function resolveLocale(request: NextRequest): Locale {
+  const fromCookie = request.cookies.get(LOCALE_COOKIE)?.value;
+
+  if (isLocale(fromCookie)) {
+    return fromCookie;
+  }
+
+  return (
+    localeFromAcceptLanguage(request.headers.get("accept-language")) ??
+    DEFAULT_LOCALE
+  );
+}
 
 const DEFAULT_PERMISSIONS_POLICY = [
   "accelerometer=()",
@@ -177,11 +199,28 @@ function applySecurityHeaders(
 
 export function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
-  return applySecurityHeaders(
-    NextResponse.next(),
-    pathname,
-    request.nextUrl.searchParams,
-  );
+  const locale = resolveLocale(request);
+  const requestHeaders = new Headers(request.headers);
+
+  // Forwarded upstream only: Client Components cannot read this header, and
+  // no request detail is sent back to the browser with it.
+  requestHeaders.set(LOCALE_HEADER, locale);
+
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
+
+  // API calls from other systems should not acquire a locale cookie. Pages
+  // get one so a later request does not depend on the browser header.
+  if (!pathname.startsWith("/api/") && !request.cookies.get(LOCALE_COOKIE)) {
+    response.cookies.set(LOCALE_COOKIE, locale, {
+      httpOnly: false,
+      maxAge: LOCALE_COOKIE_MAX_AGE_SECONDS,
+      path: "/",
+      sameSite: "lax",
+      secure: isProductionEnvironment(),
+    });
+  }
+
+  return applySecurityHeaders(response, pathname, request.nextUrl.searchParams);
 }
 
 export const config = {

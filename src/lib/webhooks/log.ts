@@ -1,10 +1,10 @@
+import { isoTime } from "../api/envelope-view.ts";
 import {
+  type DbExecutor,
   getDb,
   queryMany,
   queryOne,
-  type DbExecutor,
 } from "../db/connection.ts";
-import { isoTime } from "../api/envelope-view.ts";
 
 // The delivery log: what Settings shows per endpoint, what the API's
 // catch-up list returns, "Send again", and the daily cleanup.

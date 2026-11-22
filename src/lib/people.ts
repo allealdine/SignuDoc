@@ -1,3 +1,4 @@
+import { revokeApiKeysForUser } from "./api-keys.ts";
 import {
   type DbExecutor,
   type DbPool,
@@ -6,7 +7,6 @@ import {
   queryOne,
   withTransaction,
 } from "./db/connection.ts";
-import { revokeApiKeysForUser } from "./api-keys.ts";
 import { CURRENT_IDENTITY_VERIFIED_AT_SQL } from "./part11.ts";
 import type { RequestClient } from "./security/request.ts";
 import { recordSystemAuditEvent } from "./services/system-audit.ts";

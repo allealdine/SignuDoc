@@ -8,35 +8,36 @@ import { after } from "next/server";
 import type { Pool } from "pg";
 import { cache } from "react";
 
-import { type Branding } from "../branding.ts";
+import type { Branding } from "../branding.ts";
 import { getDb } from "../db/connection.ts";
-import {
-  createEmailService,
-  type EmailService,
-  type TransactionalEmailMessage,
-} from "../services/email.ts";
-import { withUserEmailLegalFooter } from "../services/email-legal-footer.ts";
 import { consumeRateLimit } from "../security/rate-limit.ts";
 import {
   getClientIpHeaderNames,
   getRequestClient,
 } from "../security/request.ts";
 import {
+  createEmailService,
+  type EmailService,
+  type TransactionalEmailMessage,
+} from "../services/email.ts";
+import { withUserEmailLegalFooter } from "../services/email-legal-footer.ts";
+import {
   requireConfigValue,
   ServiceConfigurationError,
 } from "../services/service-config.ts";
+import { recordSystemAuditEvent } from "../services/system-audit.ts";
+import { enforceSessionLimits } from "../session-controls.ts";
 import {
   evaluateSignupRequest,
   getBranding,
   getSettings,
   isMissingSchemaError,
 } from "../settings.ts";
-import { enforceSessionLimits } from "../session-controls.ts";
 import { clearFailedSignIns } from "../sign-in-security.ts";
 import {
+  type EnvSource,
   getEnv,
   resolveDeploymentOrigins,
-  type EnvSource,
 } from "../utils/env.ts";
 import { escapeHtml } from "../utils/html.ts";
 import { isRunningSetup } from "./setup-context.ts";
@@ -48,7 +49,6 @@ import {
   readSsoConfig,
   SSO_PROVIDER_ID,
 } from "./sso.ts";
-import { recordSystemAuditEvent } from "../services/system-audit.ts";
 
 type CreateAppAuthOptions = {
   database?: Pool;

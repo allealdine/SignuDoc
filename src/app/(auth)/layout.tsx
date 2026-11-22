@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import type { ReactNode } from "react";
 import { connection } from "next/server";
+import type { ReactNode } from "react";
 
 import { AuthShell } from "@/components/layout/auth-shell";
 import { BrandingProvider } from "@/components/layout/branding-provider";

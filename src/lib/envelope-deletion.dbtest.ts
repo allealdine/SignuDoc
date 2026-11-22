@@ -3,8 +3,8 @@ import { randomUUID } from "node:crypto";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { setTimeout as delay } from "node:timers/promises";
 import { after, before, test } from "node:test";
+import { setTimeout as delay } from "node:timers/promises";
 
 import type pg from "pg";
 
@@ -28,11 +28,11 @@ import type {
   EmailService,
   TransactionalEmailMessage,
 } from "./services/email.ts";
-import { getRecipientCertificateKey } from "./services/storage-keys.ts";
 import {
   createStorageService,
   type StorageService,
 } from "./services/storage.ts";
+import { getRecipientCertificateKey } from "./services/storage-keys.ts";
 import {
   listSystemAuditEvents,
   verifySystemAuditChain,

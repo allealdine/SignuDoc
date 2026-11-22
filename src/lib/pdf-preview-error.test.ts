@@ -18,9 +18,7 @@ async function openWithPdfJs(bytes: Uint8Array): Promise<unknown> {
   const task = pdfjs.getDocument({ data: bytes, verbosity: 0 });
 
   try {
-    const document = await task.promise;
-
-    await document.destroy();
+    await task.promise;
 
     return null;
   } catch (error) {

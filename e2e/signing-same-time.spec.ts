@@ -1,4 +1,4 @@
-import { expect, type Browser, test } from "@playwright/test";
+import { type Browser, expect, test } from "@playwright/test";
 
 import { signInAsAdministrator } from "./support/admin-session";
 import { extractLink, waitForEmail } from "./support/outbox";

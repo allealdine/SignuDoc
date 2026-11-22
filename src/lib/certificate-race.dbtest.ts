@@ -14,11 +14,11 @@ import { ELECTRONIC_RECORDS_DISCLOSURE_VERSION } from "./electronic-records-disc
 import { EnvelopeMutationError, voidSentEnvelope } from "./envelopes.ts";
 import { recordAuditEvent, verifyAuditChain } from "./services/audit.ts";
 import { issueSigningLink } from "./services/signing-links.ts";
-import { buildEnvelopeCertificateKey } from "./services/storage-keys.ts";
 import {
   createStorageService,
   type StorageService,
 } from "./services/storage.ts";
+import { buildEnvelopeCertificateKey } from "./services/storage-keys.ts";
 import {
   declineSigningForToken,
   recordSignerConsent,
@@ -593,11 +593,12 @@ test("a decline whose commit fails removes the certificates it stored", async ()
 
 async function extractPdfText(pdfBytes: Uint8Array): Promise<string> {
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
-  const document = await pdfjs.getDocument({
+  const loadingTask = pdfjs.getDocument({
     data: new Uint8Array(pdfBytes),
     useSystemFonts: false,
     verbosity: 0,
-  }).promise;
+  });
+  const document = await loadingTask.promise;
   const parts: string[] = [];
 
   for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
@@ -609,7 +610,7 @@ async function extractPdfText(pdfBytes: Uint8Array): Promise<string> {
     );
   }
 
-  await document.destroy();
+  await loadingTask.destroy();
 
   return parts.join("\n").replace(/\s+/g, " ");
 }

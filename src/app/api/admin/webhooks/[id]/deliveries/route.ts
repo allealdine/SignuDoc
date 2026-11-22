@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-
-import { listEndpointDeliveries } from "@/lib/webhooks/log";
 import { handleWebhookAdmin, noStore } from "@/lib/webhooks/admin-route";
+import { listEndpointDeliveries } from "@/lib/webhooks/log";
 
 type RouteContext = { params: Promise<{ id: string }> };
 

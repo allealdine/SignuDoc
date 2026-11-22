@@ -5,7 +5,7 @@ import { createGunzip, createGzip } from "node:zlib";
 import { del, get, list, put } from "@vercel/blob";
 
 import { type DbPool, getDb } from "./db/connection.ts";
-import { readEnv, type EnvSource } from "./utils/env.ts";
+import { type EnvSource, readEnv } from "./utils/env.ts";
 
 // A daily copy of the install to a second Vercel Blob store, kept by the
 // deployer apart from the first (another Vercel team, ideally), so that a
@@ -574,7 +574,7 @@ export async function* readDatabaseBackup(
         first = false;
 
         if (parsed.format !== BACKUP_FORMAT) {
-          throw new Error("This is not a SignuDoc database backup.");
+          throw new Error("This is not a Sakta database backup.");
         }
 
         yield {
@@ -681,7 +681,7 @@ export async function restoreDatabase({
 
         if (missing.length > 0) {
           throw new RestoreError(
-            `The backup is from a newer version of SignuDoc. Update this copy first; it lacks ${missing.join(", ")}.`,
+            `The backup is from a newer version of Sakta. Update this copy first; it lacks ${missing.join(", ")}.`,
           );
         }
 

@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, type ChangeEvent, type FormEvent } from "react";
+import { type ChangeEvent, type FormEvent, useState } from "react";
 
 import { useBranding } from "@/components/layout/branding-provider";
-import { FieldShell, ShellButton } from "@/components/shared/form-shell";
-import { PageHeader } from "@/components/shared/page-header";
 import { SessionsPanel } from "@/components/settings/sessions-panel";
 import { TwoFactorPanel } from "@/components/settings/two-factor-panel";
+import { FieldShell, ShellButton } from "@/components/shared/form-shell";
+import { PageHeader } from "@/components/shared/page-header";
 import {
   Dialog,
   DialogContent,
@@ -16,9 +16,13 @@ import {
 } from "@/components/ui/dialog";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { formatMessage } from "@/lib/i18n/format.ts";
+import type { Messages } from "@/lib/i18n/locales/en.ts";
+import { useMessages } from "@/lib/i18n/messages-provider.tsx";
 
 const CLOSURE_CONFIRMATION_PHRASE = "close my account";
-const GENERIC_ERROR_MESSAGE = "Something went wrong. Please try again.";
+
+type AccountCopy = Messages["settings"]["account"];
 
 type SettingsShellProps = {
   /** Why this account cannot be closed; shown in place of the button. */
@@ -76,29 +80,35 @@ function trimProfileValues(values: ProfileValues): ProfileValues {
   };
 }
 
-function validateProfileValues(values: ProfileValues): ProfileErrors {
+function validateProfileValues(
+  values: ProfileValues,
+  copy: AccountCopy["profile"],
+): ProfileErrors {
   const errors: ProfileErrors = {};
 
   if (values.fullName.length === 0) {
-    errors.fullName = "Enter your full name";
+    errors.fullName = copy.fullNameRequired;
   }
 
   if (values.email.length === 0 || !values.email.includes("@")) {
-    errors.email = "Enter a valid email address";
+    errors.email = copy.emailInvalid;
   }
 
   return errors;
 }
 
-function validatePasswordValues(values: PasswordValues): PasswordErrors {
+function validatePasswordValues(
+  values: PasswordValues,
+  copy: AccountCopy["password"],
+): PasswordErrors {
   const errors: PasswordErrors = {};
 
   if (values.currentPassword.length === 0) {
-    errors.currentPassword = "Enter your current password";
+    errors.currentPassword = copy.currentRequired;
   }
 
   if (values.newPassword.trim().length < 15) {
-    errors.newPassword = "Password must be at least 15 characters";
+    errors.newPassword = copy.tooShort;
   }
 
   return errors;
@@ -108,9 +118,12 @@ async function readApiPayload(response: Response): Promise<ApiErrorPayload> {
   return (await response.json().catch(() => null)) as ApiErrorPayload;
 }
 
-function extractApiErrorMessage(payload: ApiErrorPayload): string {
+function extractApiErrorMessage(
+  payload: ApiErrorPayload,
+  fallback: string,
+): string {
   if (!payload) {
-    return GENERIC_ERROR_MESSAGE;
+    return fallback;
   }
 
   if (typeof payload.error === "string" && payload.error.trim()) {
@@ -130,7 +143,7 @@ function extractApiErrorMessage(payload: ApiErrorPayload): string {
     return payload.message;
   }
 
-  return GENERIC_ERROR_MESSAGE;
+  return fallback;
 }
 
 function isDuplicateEmailMessage(message: string) {
@@ -168,7 +181,8 @@ export function SettingsShell({
   initialProfile = defaultProfileValues,
   twoFactor = { enabled: false, required: false },
 }: SettingsShellProps) {
-  const closureCopy = useClosureCopy();
+  const copy = useMessages().messages.settings.account;
+  const closureCopy = useClosureCopy(copy.closure);
   const [profileValues, setProfileValues] = useState(initialProfile);
   const [savedProfileValues, setSavedProfileValues] = useState(initialProfile);
   const [profileErrors, setProfileErrors] = useState<ProfileErrors>({});
@@ -223,7 +237,7 @@ export function SettingsShell({
     }
 
     const trimmedValues = trimProfileValues(profileValues);
-    const nextErrors = validateProfileValues(trimmedValues);
+    const nextErrors = validateProfileValues(trimmedValues, copy.profile);
 
     if (Object.keys(nextErrors).length > 0) {
       setProfileValues(trimmedValues);
@@ -260,14 +274,17 @@ export function SettingsShell({
 
         if (!response.ok) {
           const fieldErrors = payload?.fieldErrors ?? {};
-          const errorMessage = extractApiErrorMessage(payload);
+          const errorMessage = extractApiErrorMessage(
+            payload,
+            copy.genericError,
+          );
 
           setProfileErrors({
             email:
               typeof fieldErrors.email === "string"
                 ? fieldErrors.email
                 : isDuplicateEmailMessage(errorMessage)
-                  ? "This email is already registered"
+                  ? copy.profile.emailRegistered
                   : undefined,
             fullName:
               typeof fieldErrors.fullName === "string"
@@ -278,7 +295,7 @@ export function SettingsShell({
             message:
               typeof fieldErrors.email === "string" ||
               typeof fieldErrors.fullName === "string"
-                ? "Please correct the highlighted fields."
+                ? copy.profile.correctFields
                 : errorMessage,
             tone: "error",
           });
@@ -306,13 +323,16 @@ export function SettingsShell({
         const payload = await readApiPayload(response);
 
         if (!response.ok) {
-          const errorMessage = extractApiErrorMessage(payload);
+          const errorMessage = extractApiErrorMessage(
+            payload,
+            copy.genericError,
+          );
 
           setProfileErrors({
             email: isDuplicateEmailMessage(errorMessage)
-              ? "This email is already registered"
+              ? copy.profile.emailRegistered
               : isNoOpEmailChangeMessage(errorMessage)
-                ? "Enter a different email address"
+                ? copy.profile.emailDifferent
                 : undefined,
             fullName: undefined,
           });
@@ -324,7 +344,7 @@ export function SettingsShell({
             message:
               isDuplicateEmailMessage(errorMessage) ||
               isNoOpEmailChangeMessage(errorMessage)
-                ? "Please correct the highlighted fields."
+                ? copy.password.correctFields
                 : errorMessage,
             tone: "error",
           });
@@ -335,8 +355,8 @@ export function SettingsShell({
         setProfileErrors({});
         setFeedback({
           message: nameChanged
-            ? "Profile updated. If the email change can proceed, you'll receive the next steps by email."
-            : "If the email change can proceed, you'll receive the next steps by email.",
+            ? copy.profile.success.updatedWithEmailSteps
+            : copy.profile.success.emailSteps,
           tone: "success",
         });
         return;
@@ -345,12 +365,12 @@ export function SettingsShell({
       setProfileValues(nextSavedProfile);
       setProfileErrors({});
       setFeedback({
-        message: "Profile updated.",
+        message: copy.profile.success.updated,
         tone: "success",
       });
     } catch {
       setFeedback({
-        message: GENERIC_ERROR_MESSAGE,
+        message: copy.genericError,
         tone: "error",
       });
     } finally {
@@ -365,7 +385,7 @@ export function SettingsShell({
       return;
     }
 
-    const nextErrors = validatePasswordValues(passwordValues);
+    const nextErrors = validatePasswordValues(passwordValues, copy.password);
 
     if (Object.keys(nextErrors).length > 0) {
       setPasswordErrors(nextErrors);
@@ -391,16 +411,16 @@ export function SettingsShell({
       const payload = await readApiPayload(response);
 
       if (!response.ok) {
-        const errorMessage = extractApiErrorMessage(payload);
+        const errorMessage = extractApiErrorMessage(payload, copy.genericError);
 
         setPasswordErrors({
           currentPassword: isInvalidPasswordMessage(errorMessage)
-            ? "Current password is incorrect"
+            ? copy.password.currentIncorrect
             : undefined,
           newPassword: isPasswordTooShortMessage(errorMessage)
-            ? "Password must be at least 15 characters"
+            ? copy.password.tooShort
             : isCompromisedPasswordMessage(errorMessage)
-              ? "Choose a password that hasn't appeared in a breach"
+              ? copy.password.breached
               : undefined,
         });
         setFeedback({
@@ -408,7 +428,7 @@ export function SettingsShell({
             isInvalidPasswordMessage(errorMessage) ||
             isPasswordTooShortMessage(errorMessage) ||
             isCompromisedPasswordMessage(errorMessage)
-              ? "Please correct the highlighted fields."
+              ? copy.password.correctFields
               : errorMessage,
           tone: "error",
         });
@@ -418,12 +438,12 @@ export function SettingsShell({
       setPasswordValues(defaultPasswordValues);
       setPasswordErrors({});
       setFeedback({
-        message: "Password updated.",
+        message: copy.password.success.updated,
         tone: "success",
       });
     } catch {
       setFeedback({
-        message: GENERIC_ERROR_MESSAGE,
+        message: copy.genericError,
         tone: "error",
       });
     } finally {
@@ -437,7 +457,10 @@ export function SettingsShell({
     }
 
     const trimmedProfileValues = trimProfileValues(profileValues);
-    const nextErrors = validateProfileValues(trimmedProfileValues);
+    const nextErrors = validateProfileValues(
+      trimmedProfileValues,
+      copy.profile,
+    );
 
     if (nextErrors.email) {
       setProfileValues(trimmedProfileValues);
@@ -472,19 +495,19 @@ export function SettingsShell({
 
       if (!response.ok) {
         setFeedback({
-          message: extractApiErrorMessage(payload),
+          message: extractApiErrorMessage(payload, copy.genericError),
           tone: "error",
         });
         return;
       }
 
       setFeedback({
-        message: "Password reset link sent.",
+        message: copy.password.success.resetSent,
         tone: "success",
       });
     } catch {
       setFeedback({
-        message: GENERIC_ERROR_MESSAGE,
+        message: copy.genericError,
         tone: "error",
       });
     } finally {
@@ -533,7 +556,7 @@ export function SettingsShell({
 
       if (!response.ok) {
         setFeedback({
-          message: extractApiErrorMessage(payload),
+          message: extractApiErrorMessage(payload, copy.genericError),
           tone: "error",
         });
         return;
@@ -542,13 +565,12 @@ export function SettingsShell({
       setClosureConfirmation("");
       setIsClosureDialogOpen(false);
       setFeedback({
-        message:
-          "We've received your request. Download any documents you want to keep within 30 days.",
+        message: copy.closure.success,
         tone: "success",
       });
     } catch {
       setFeedback({
-        message: GENERIC_ERROR_MESSAGE,
+        message: copy.genericError,
         tone: "error",
       });
     } finally {
@@ -559,8 +581,8 @@ export function SettingsShell({
   return (
     <div className="space-y-5">
       <PageHeader
-        description="Manage your sender profile, password, two-step sign-in and account lifecycle."
-        title="Settings"
+        description={copy.header.description}
+        title={copy.header.title}
       />
 
       {feedback ? <SettingsFeedback feedback={feedback} /> : null}
@@ -568,14 +590,14 @@ export function SettingsShell({
       <section data-animate="enter" data-animate-delay="1">
         <div className="space-y-5">
           <div className="panel space-y-5 p-6 sm:p-8">
-            <SectionHeading title="Profile" />
+            <SectionHeading title={copy.profile.title} />
 
             <form className="space-y-5" onSubmit={handleProfileSubmit}>
               <div className="grid gap-4 sm:grid-cols-2">
                 <FieldShell
                   disabled={isBusy}
                   error={profileErrors.fullName}
-                  label="Full name"
+                  label={copy.profile.labelFullName}
                   name="fullName"
                   onChange={handleProfileChange("fullName")}
                   readOnly={false}
@@ -584,7 +606,7 @@ export function SettingsShell({
                 <FieldShell
                   disabled={isBusy}
                   error={profileErrors.email}
-                  label="Email"
+                  label={copy.profile.labelEmail}
                   name="email"
                   onChange={handleProfileChange("email")}
                   readOnly={false}
@@ -602,21 +624,23 @@ export function SettingsShell({
                 loading={pendingAction === "profile"}
                 type="submit"
               >
-                {pendingAction === "profile" ? "Saving..." : "Save changes"}
+                {pendingAction === "profile"
+                  ? copy.profile.saving
+                  : copy.profile.save}
               </ShellButton>
             </form>
           </div>
 
           <div className="panel p-6 sm:p-8">
             <div className="space-y-5">
-              <SectionHeading title="Password" />
+              <SectionHeading title={copy.password.title} />
 
               <form className="space-y-5" onSubmit={handlePasswordSubmit}>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <FieldShell
                     disabled={isBusy}
                     error={passwordErrors.currentPassword}
-                    label="Current password"
+                    label={copy.password.labelCurrent}
                     name="currentPassword"
                     onChange={handlePasswordChange("currentPassword")}
                     placeholder="••••••••••"
@@ -627,8 +651,8 @@ export function SettingsShell({
                   <FieldShell
                     disabled={isBusy}
                     error={passwordErrors.newPassword}
-                    helper="Must be at least 15 characters"
-                    label="New password"
+                    helper={copy.password.helper}
+                    label={copy.password.labelNew}
                     name="newPassword"
                     onChange={handlePasswordChange("newPassword")}
                     placeholder="•••••••••••••••"
@@ -645,8 +669,8 @@ export function SettingsShell({
                     type="submit"
                   >
                     {pendingAction === "password"
-                      ? "Updating..."
-                      : "Update password"}
+                      ? copy.password.updating
+                      : copy.password.update}
                   </ShellButton>
                   <ShellButton
                     disabled={isBusy}
@@ -655,8 +679,8 @@ export function SettingsShell({
                     variant="secondary"
                   >
                     {pendingAction === "reset"
-                      ? "Sending..."
-                      : "Email me a reset link"}
+                      ? copy.password.sending
+                      : copy.password.emailResetLink}
                   </ShellButton>
                 </div>
               </form>
@@ -672,7 +696,7 @@ export function SettingsShell({
 
           <div className="panel p-6 sm:p-8">
             <div className="space-y-5">
-              <SectionHeading title="Danger zone" />
+              <SectionHeading title={copy.closure.dangerZone} />
               <p className="max-w-2xl text-sm leading-6 text-(--secondary)">
                 {closureCopy}
               </p>
@@ -687,7 +711,7 @@ export function SettingsShell({
                   onClick={openClosureDialog}
                   variant="secondary"
                 >
-                  Request account closure
+                  {copy.closure.request}
                 </ShellButton>
               )}
             </div>
@@ -743,12 +767,12 @@ type AccountClosureDialogProps = {
   onConfirm: () => void;
 };
 
-function useClosureCopy(): string {
+function useClosureCopy(copy: AccountCopy["closure"]): string {
   const { hosted, productName } = useBranding();
 
   return hosted
-    ? `Before closing your account, download any documents you want to keep. After closure, ${productName} keeps a 30-day export window and then deletes your stored documents, templates and envelope records. Signers keep the copies they were emailed.`
-    : `Before closing your account, download any documents you want to keep. After 30 days your drafts, unfinished envelopes and templates are deleted. Finished documents and their audit trails stay with ${productName}: they move to an administrator, because they are the organization's records.`;
+    ? formatMessage(copy.hostedCopy, { productName })
+    : formatMessage(copy.selfHostedCopy, { productName });
 }
 
 function AccountClosureDialog({
@@ -759,7 +783,8 @@ function AccountClosureDialog({
   onChange,
   onConfirm,
 }: AccountClosureDialogProps) {
-  const closureCopy = useClosureCopy();
+  const copy = useMessages().messages.settings.account;
+  const closureCopy = useClosureCopy(copy.closure);
 
   return (
     <Dialog
@@ -773,7 +798,7 @@ function AccountClosureDialog({
       <DialogContent className="max-w-lg sm:p-8" showCloseButton={false}>
         <div className="space-y-5">
           <DialogHeader className="space-y-3">
-            <DialogTitle>Request account closure?</DialogTitle>
+            <DialogTitle>{copy.closure.title}</DialogTitle>
             <DialogDescription className="text-sm leading-6 text-(--secondary)">
               {closureCopy}
             </DialogDescription>
@@ -784,10 +809,14 @@ function AccountClosureDialog({
               className="text-[0.8125rem] font-semibold text-(--secondary)"
               htmlFor="close-account-confirmation"
             >
-              Type &quot;close my account&quot; to confirm:
+              {formatMessage(copy.closure.confirmationLabel, {
+                phrase: CLOSURE_CONFIRMATION_PHRASE,
+              })}
             </FieldLabel>
             <Input
-              aria-label='Type "close my account" to confirm:'
+              aria-label={formatMessage(copy.closure.confirmationLabel, {
+                phrase: CLOSURE_CONFIRMATION_PHRASE,
+              })}
               disabled={isSubmitting}
               id="close-account-confirmation"
               onChange={(event) => onChange(event.target.value)}
@@ -802,7 +831,7 @@ function AccountClosureDialog({
               onClick={onCancel}
               variant="secondary"
             >
-              Cancel
+              {copy.closure.cancel}
             </ShellButton>
             <ShellButton
               disabled={!isReady}
@@ -810,7 +839,7 @@ function AccountClosureDialog({
               onClick={onConfirm}
               variant="danger"
             >
-              {isSubmitting ? "Requesting..." : "Request closure"}
+              {isSubmitting ? copy.closure.requesting : copy.closure.confirm}
             </ShellButton>
           </div>
         </div>

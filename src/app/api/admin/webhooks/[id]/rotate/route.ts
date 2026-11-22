@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-
-import { rotateWebhookSecret } from "@/lib/webhooks/endpoints";
 import { handleWebhookAdmin, noStore } from "@/lib/webhooks/admin-route";
+import { rotateWebhookSecret } from "@/lib/webhooks/endpoints";
 
 type RouteContext = { params: Promise<{ id: string }> };
 

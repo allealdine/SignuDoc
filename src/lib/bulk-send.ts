@@ -28,8 +28,8 @@ import {
 } from "./envelopes.ts";
 import { describePart11SignerProblem, findSignerAccounts } from "./part11.ts";
 import {
-  bulkSendRequestSchema,
   type BulkSendRequest,
+  bulkSendRequestSchema,
 } from "./schemas/bulk-send.ts";
 import { logRouteError } from "./security/logging.ts";
 import { DocumentImportError } from "./services/document-import.ts";
@@ -44,7 +44,7 @@ import {
   getTemplateForBulkSend,
   TemplateError,
 } from "./templates.ts";
-import { type SignatureMeaning } from "./types/domain.ts";
+import type { SignatureMeaning } from "./types/domain.ts";
 
 // Send one template to many people: each CSV row becomes its own envelope,
 // created from the template and sent the same way a hand-sent draft is.

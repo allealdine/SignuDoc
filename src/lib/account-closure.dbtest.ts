@@ -6,8 +6,8 @@ import type pg from "pg";
 
 import {
   AccountMutationError,
-  LAST_ADMIN_CLOSURE_MESSAGE,
   accountClosureBlock,
+  LAST_ADMIN_CLOSURE_MESSAGE,
   requestAccountClosure,
 } from "./account.ts";
 import { openTestDatabase } from "./db/test-database.ts";

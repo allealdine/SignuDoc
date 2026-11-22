@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-
-import { getAuthSessionFromHeaders } from "@/lib/auth/server";
 import { AccountMutationError, updateSenderProfile } from "@/lib/account";
+import { getAuthSessionFromHeaders } from "@/lib/auth/server";
 import { getDb } from "@/lib/db/connection";
 
 export async function PATCH(request: Request) {

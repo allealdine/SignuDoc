@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
+import type { ReactNode } from "react";
 
 import { BrandingProvider } from "@/components/layout/branding-provider";
 import { getAuthSession } from "@/lib/auth/server";

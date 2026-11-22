@@ -13,11 +13,11 @@ import { openTestDatabase } from "../db/test-database.ts";
 import { EnvelopeMutationError } from "../envelopes.ts";
 import { recordAuditEvent } from "../services/audit.ts";
 import {
+  type ApiActor,
   apiCreateEnvelopeSchema,
   createEnvelopeForApi,
   getApiEnvelope,
   listApiEnvelopes,
-  type ApiActor,
 } from "./envelopes.ts";
 import {
   claimIdempotencyKey,

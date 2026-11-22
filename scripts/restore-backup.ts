@@ -16,7 +16,7 @@
 // so a restore that fails leaves the database as it was.
 
 import pg from "pg";
-
+import { runMigrations } from "../db/migrate.mjs";
 import {
   createVercelBlobStore,
   DATABASE_PREFIX,
@@ -24,7 +24,6 @@ import {
   restoreDatabase,
   restoreFiles,
 } from "../src/lib/backup.ts";
-import { runMigrations } from "../db/migrate.mjs";
 
 function readArgument(name: string): string | null {
   const index = process.argv.indexOf(name);

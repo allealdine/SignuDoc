@@ -11,12 +11,12 @@ import { ZodError } from "zod";
 
 import {
   BULK_SEND_CLAIM_STALE_SECONDS,
+  BulkSendError,
   bulkSendBatchBusyMessage,
   bulkSendBatchMismatchMessage,
   bulkSendFromTemplate,
   bulkSendInvitationUnconfirmedMessage,
   bulkSendSkippedRowMessage,
-  BulkSendError,
   missingBulkSendBatchKeyMessage,
 } from "./bulk-send.ts";
 import { MAX_BULK_SEND_ROWS } from "./bulk-send-csv.ts";
@@ -29,11 +29,11 @@ import {
   replaceDraftEnvelopeFields,
   replaceDraftEnvelopeSigners,
 } from "./envelopes.ts";
+import { duplicateCopyRecipientEmailMessage } from "./schemas/signer.ts";
 import {
   createStorageService,
   type StorageService,
 } from "./services/storage.ts";
-import { duplicateCopyRecipientEmailMessage } from "./schemas/signer.ts";
 import { eraseSignerData } from "./signer-data.ts";
 import { saveEnvelopeAsTemplate, TemplateError } from "./templates.ts";
 

@@ -4,8 +4,8 @@ import { crc32, deflateSync } from "node:zlib";
 
 import {
   BrandLogoError,
-  MAX_LOGO_BYTES,
   checkLogoUpload,
+  MAX_LOGO_BYTES,
   sniffLogoContentType,
 } from "./brand-logo.ts";
 

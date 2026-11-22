@@ -1,24 +1,23 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useRef, useState, type CSSProperties, type ChangeEvent } from "react";
+import { type ChangeEvent, type CSSProperties, useRef, useState } from "react";
 
 import { BrandLogo } from "@/components/layout/brand";
 import {
-  DEFAULT_BRAND_COLOR,
-  DEFAULT_BRAND_PALETTE,
   brandPaletteVariables,
   buildBrandPalette,
+  DEFAULT_BRAND_COLOR,
+  DEFAULT_BRAND_PALETTE,
   normalizeBrandColor,
 } from "@/lib/brand-color";
 import { LOGO_CONTENT_TYPES, MAX_LOGO_BYTES } from "@/lib/branding";
+import { useMessages } from "@/lib/i18n/messages-provider.tsx";
 
 // The install's own logo and color, on the Organization tab in Settings.
 //
 // The logo is saved as soon as it is chosen. The color is part of the form
 // around this panel and is saved with it.
-
-const GENERIC_ERROR_MESSAGE = "Something went wrong. Please try again.";
 
 type BrandingPanelProps = {
   brandColor: string;
@@ -40,6 +39,7 @@ export function BrandingPanel({
   onLogoChange,
 }: BrandingPanelProps) {
   const router = useRouter();
+  const copy = useMessages().messages.settings.branding;
   const fileInput = useRef<HTMLInputElement>(null);
   const [logoError, setLogoError] = useState<string | null>(null);
   const [logoBusy, setLogoBusy] = useState<"removing" | "uploading" | null>(
@@ -65,7 +65,7 @@ export function BrandingPanel({
       const payload = (await response.json().catch(() => null)) as LogoResponse;
 
       if (!response.ok || !payload || payload.logoUrl === undefined) {
-        setLogoError(payload?.error ?? GENERIC_ERROR_MESSAGE);
+        setLogoError(payload?.error ?? copy.genericError);
         return;
       }
 
@@ -73,7 +73,7 @@ export function BrandingPanel({
       // The header above this page shows the logo too.
       router.refresh();
     } catch {
-      setLogoError(GENERIC_ERROR_MESSAGE);
+      setLogoError(copy.genericError);
     } finally {
       setLogoBusy(null);
     }
@@ -90,12 +90,12 @@ export function BrandingPanel({
     }
 
     if (!(LOGO_CONTENT_TYPES as readonly string[]).includes(file.type)) {
-      setLogoError("The logo must be a PNG, JPEG or WebP image.");
+      setLogoError(copy.logo.invalidType);
       return;
     }
 
     if (file.size > MAX_LOGO_BYTES) {
-      setLogoError("The logo must be 512 KB or smaller.");
+      setLogoError(copy.logo.tooLarge);
       return;
     }
 
@@ -108,33 +108,31 @@ export function BrandingPanel({
     <div className="space-y-5 border-t border-(--border) pt-8">
       <div className="space-y-2">
         <h3 className="text-lg font-extrabold tracking-[-0.02em] text-(--fg)">
-          Logo and color
+          {copy.logo.title}
         </h3>
         <p className="max-w-2xl text-sm leading-6 text-(--secondary)">
-          Optional. Your logo goes in the header of this site, on the pages
-          signers see and at the top of emails. Your color is used for buttons
-          and links.
+          {copy.description}
         </p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="well space-y-4 p-4">
           <p className="text-[0.8125rem] font-semibold text-(--secondary)">
-            Logo
+            {copy.logo.subtitle}
           </p>
           <div className="flex min-h-16 items-center rounded-xl bg-(--paper) px-4 py-3">
             {logoUrl ? (
               <BrandLogo src={logoUrl} />
             ) : (
               <span className="text-sm leading-6 text-(--tertiary)">
-                No logo yet. The header shows your organization&rsquo;s name.
+                {copy.logo.empty}
               </span>
             )}
           </div>
           <div className="flex flex-wrap gap-2">
             <input
               accept={LOGO_CONTENT_TYPES.join(",")}
-              aria-label="Logo image"
+              aria-label={copy.logo.ariaLabel}
               className="hidden"
               disabled={busy}
               onChange={handleFileChosen}
@@ -149,10 +147,10 @@ export function BrandingPanel({
               type="button"
             >
               {logoBusy === "uploading"
-                ? "Uploading..."
+                ? copy.logo.uploading
                 : logoUrl
-                  ? "Replace logo"
-                  : "Upload a logo"}
+                  ? copy.logo.replace
+                  : copy.logo.upload}
             </button>
             {logoUrl ? (
               <button
@@ -161,7 +159,9 @@ export function BrandingPanel({
                 onClick={() => void sendLogo(null)}
                 type="button"
               >
-                {logoBusy === "removing" ? "Removing..." : "Remove logo"}
+                {logoBusy === "removing"
+                  ? copy.logo.removing
+                  : copy.logo.remove}
               </button>
             ) : null}
           </div>
@@ -171,8 +171,7 @@ export function BrandingPanel({
             </p>
           ) : (
             <p className="text-xs leading-5 text-(--tertiary)">
-              PNG, JPEG or WebP, up to 512 KB. A wide logo on a transparent
-              background works best. It is saved as soon as you choose it.
+              {copy.logo.fileHelper}
             </p>
           )}
         </div>
@@ -182,11 +181,11 @@ export function BrandingPanel({
             className="block text-[0.8125rem] font-semibold text-(--secondary)"
             htmlFor="brand-color"
           >
-            Brand color
+            {copy.color.label}
           </label>
           <div className="flex flex-wrap items-center gap-2">
             <input
-              aria-label="Color picker"
+              aria-label={copy.color.pickerAriaLabel}
               className="size-12 shrink-0 cursor-pointer rounded-xl border-[1.5px] border-(--border-strong) bg-(--paper) p-1 disabled:cursor-not-allowed"
               disabled={disabled}
               onChange={(event) => onBrandColorChange(event.target.value)}
@@ -215,7 +214,7 @@ export function BrandingPanel({
                 onClick={() => onBrandColorChange("")}
                 type="button"
               >
-                Use the default
+                {copy.color.default}
               </button>
             ) : null}
           </div>
@@ -226,11 +225,11 @@ export function BrandingPanel({
             style={brandPaletteVariables(palette) as CSSProperties}
           >
             <span className="inline-flex min-h-9 items-center rounded-[0.75rem] bg-(--accent) px-3.5 text-[0.8125rem] font-bold text-white">
-              Button
+              {copy.preview.button}
             </span>
-            <span className="pill pill-accent">Status</span>
+            <span className="pill pill-accent">{copy.preview.status}</span>
             <span className="text-[0.8125rem] font-semibold text-(--accent-ink) underline decoration-[rgb(var(--accent-rgb)/0.35)] underline-offset-4">
-              Link
+              {copy.preview.link}
             </span>
           </div>
           {brandColorError ? (
@@ -246,9 +245,7 @@ export function BrandingPanel({
               className="text-xs leading-5 text-(--tertiary)"
               id="brand-color-description"
             >
-              {darkened
-                ? "This color is too light for white text to be read on it, so a darker shade of it is used."
-                : "Six letters and digits, such as #1a73e8. Leave empty for the default. Saved with the button below."}
+              {darkened ? copy.color.lightWarning : copy.color.helper}
             </p>
           )}
         </div>

@@ -1,21 +1,21 @@
 import { NextResponse } from "next/server";
 
 import { getDb } from "@/lib/db/connection";
-import {
-  verificationRequiredResponse,
-  verifiedMethodsForRequest,
-} from "@/lib/signing-route";
-import {
-  SigningAccessError,
-  SigningVerificationRequiredError,
-  getSigningDocumentForToken,
-} from "@/lib/signing";
 import { logRouteError } from "@/lib/security/logging";
+import { getClientIpAddress } from "@/lib/security/request";
 import {
   applyPublicLinkRateLimit,
   buildRateLimitKey,
 } from "@/lib/security/route-controls";
-import { getClientIpAddress } from "@/lib/security/request";
+import {
+  getSigningDocumentForToken,
+  SigningAccessError,
+  SigningVerificationRequiredError,
+} from "@/lib/signing";
+import {
+  verificationRequiredResponse,
+  verifiedMethodsForRequest,
+} from "@/lib/signing-route";
 
 type SigningDocumentRouteContext = {
   params: Promise<{

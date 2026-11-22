@@ -2,22 +2,14 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type ChangeEvent, type FormEvent } from "react";
-
-import { useBranding } from "@/components/layout/branding-provider";
+import { type ChangeEvent, type FormEvent, useState } from "react";
 import {
   describeSsoError,
   SsoButton,
   type SsoOption,
 } from "@/components/auth/sso-button";
+import { useBranding } from "@/components/layout/branding-provider";
 import { FieldShell, ShellButton } from "@/components/shared/form-shell";
-import { authClient } from "@/lib/auth/client";
-import {
-  describePasswordRefusal,
-  newPasswordLengthError,
-  PASSWORD_TOO_LONG_MESSAGE,
-} from "@/lib/password-messages";
-import { forgotPasswordSchema, loginSchema } from "@/lib/schemas/auth";
 import {
   Dialog,
   DialogContent,
@@ -25,6 +17,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { authClient } from "@/lib/auth/client";
+import {
+  describePasswordRefusal,
+  newPasswordLengthError,
+  PASSWORD_TOO_LONG_MESSAGE,
+} from "@/lib/password-messages";
+import { forgotPasswordSchema, loginSchema } from "@/lib/schemas/auth";
 
 const verificationRequiredMessage =
   "Verify your email before logging in. Check your inbox for a fresh link.";

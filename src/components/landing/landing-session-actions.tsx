@@ -5,6 +5,7 @@ import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { authClient } from "@/lib/auth/client";
 import { cn } from "@/lib/cn";
+import { useMessages } from "@/lib/i18n/messages-provider.tsx";
 
 type LandingSessionActionProps = {
   className?: string;
@@ -17,6 +18,7 @@ export function LandingSessionPrimaryAction({
   tone = "default",
 }: LandingSessionActionProps) {
   const { data: session } = authClient.useSession();
+  const { messages } = useMessages();
   const authenticated = !!session;
 
   return (
@@ -33,7 +35,9 @@ export function LandingSessionPrimaryAction({
       href={authenticated ? "/dashboard" : "/signup"}
       prefetch
     >
-      {authenticated ? "Go to dashboard" : "Start free"}
+      {authenticated
+        ? messages.landing.actions.goToDashboard
+        : messages.landing.actions.startFree}
     </Link>
   );
 }
@@ -43,6 +47,7 @@ export function LandingSessionLoginAction({
   tone = "default",
 }: LandingSessionActionProps) {
   const { data: session } = authClient.useSession();
+  const { messages } = useMessages();
 
   if (session) {
     return null;
@@ -59,7 +64,7 @@ export function LandingSessionLoginAction({
       href="/login"
       prefetch
     >
-      Log in
+      {messages.landing.actions.logIn}
     </Link>
   );
 }

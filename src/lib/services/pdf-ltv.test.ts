@@ -41,8 +41,8 @@ import {
   requestDocumentTimestamp,
   saveSealedPdf,
 } from "./pdf-seal.ts";
-import { sealForTheLongTerm } from "./seal-identity.ts";
 import { startTestPki, type TestPki } from "./pki-test-support.ts";
+import { sealForTheLongTerm } from "./seal-identity.ts";
 
 const run = promisify(execFile);
 const localFetch = createValidationFetch({ allowPrivateAddresses: true });
@@ -436,7 +436,7 @@ test("a certificate authority that does not answer is given up on in time", asyn
 
 test("each redirect counts against the document's lookups", async () => {
   let requests = 0;
-  const server = createServer((request, response) => {
+  const server = createServer((_request, response) => {
     requests += 1;
     // Always somewhere else.
     response.writeHead(302, { location: `/next-${String(requests)}` }).end();

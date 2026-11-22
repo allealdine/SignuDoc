@@ -1,4 +1,4 @@
-import { hasEnv, type EnvSource } from "../utils/env.ts";
+import { type EnvSource, hasEnv } from "../utils/env.ts";
 
 export class ServiceConfigurationError extends Error {
   constructor(serviceName: string, variableNames: readonly string[]) {

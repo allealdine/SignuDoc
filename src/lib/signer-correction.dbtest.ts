@@ -4,10 +4,9 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, before, test } from "node:test";
-import { ZodError } from "zod";
-
 import { PDFDocument } from "pdf-lib";
 import type pg from "pg";
+import { ZodError } from "zod";
 
 import { exportEnvelopeAuditCsv } from "./audit-export.ts";
 import { afterStatement, openTestDatabase } from "./db/test-database.ts";
@@ -17,6 +16,7 @@ import {
   EnvelopeMutationError,
   getEnvelopeDetailDataForUser,
 } from "./envelopes.ts";
+import { sendManualEnvelopeNudge } from "./reminders.ts";
 import type { EnvelopeRecord } from "./schemas/envelope.ts";
 import {
   duplicateSignerEmailMessage,
@@ -33,7 +33,6 @@ import type {
 } from "./services/email.ts";
 import { hashOpaqueToken } from "./services/opaque-tokens.ts";
 import { renderEnvelopeCertificatePdf } from "./services/pdf-finalize.ts";
-import { sendManualEnvelopeNudge } from "./reminders.ts";
 import { issueSigningLink } from "./services/signing-links.ts";
 import {
   createStorageService,
@@ -350,11 +349,12 @@ function submitDrawn(
 
 async function extractPdfText(pdfBytes: Uint8Array): Promise<string> {
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
-  const document = await pdfjs.getDocument({
+  const loadingTask = pdfjs.getDocument({
     data: new Uint8Array(pdfBytes),
     useSystemFonts: false,
     verbosity: 0,
-  }).promise;
+  });
+  const document = await loadingTask.promise;
   const parts: string[] = [];
 
   for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
@@ -366,7 +366,7 @@ async function extractPdfText(pdfBytes: Uint8Array): Promise<string> {
     );
   }
 
-  await document.destroy();
+  await loadingTask.destroy();
 
   return parts.join("\n").replace(/\s+/g, " ");
 }

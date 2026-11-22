@@ -2,11 +2,11 @@ import { NextResponse } from "next/server";
 
 import { requireVerifiedSenderSession } from "@/lib/auth/route-session";
 import { getDb } from "@/lib/db/connection";
+import { resolveEnvelopeViewerAccess } from "@/lib/envelope-access";
 import {
   EnvelopeDocumentAccessError,
   getDraftEnvelopeDocumentForUser,
 } from "@/lib/envelopes";
-import { resolveEnvelopeViewerAccess } from "@/lib/envelope-access";
 import { logRouteError } from "@/lib/security/logging";
 import { getClientIpAddress, getRequestPathname } from "@/lib/security/request";
 import { buildContentDisposition } from "@/lib/services/storage";

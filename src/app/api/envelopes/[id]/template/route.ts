@@ -4,11 +4,11 @@ import { ZodError } from "zod";
 import { requireVerifiedSenderSession } from "@/lib/auth/route-session";
 import { getDb } from "@/lib/db/connection";
 import { logRouteError } from "@/lib/security/logging";
+import { getClientIpAddress, getRequestPathname } from "@/lib/security/request";
 import {
   applyRateLimit,
   buildRateLimitKey,
 } from "@/lib/security/route-controls";
-import { getClientIpAddress, getRequestPathname } from "@/lib/security/request";
 import { saveEnvelopeAsTemplate, TemplateError } from "@/lib/templates";
 
 type EnvelopeTemplateRouteContext = {

@@ -1,8 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-
-import { checkSession, parseSessionLimit } from "./session-controls.ts";
 import { SESSION_IDLE_CHOICES } from "./session-choices.ts";
+import { checkSession, parseSessionLimit } from "./session-controls.ts";
 
 const CREATED = new Date("2026-11-17T09:00:00Z");
 const createdSeconds = Math.floor(CREATED.getTime() / 1000);

@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import {
-  useState,
   type ChangeEvent,
   type ChangeEventHandler,
   type FormEvent,
+  useState,
 } from "react";
 
 import { SsoButton, type SsoOption } from "@/components/auth/sso-button";

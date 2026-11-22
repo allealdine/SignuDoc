@@ -28,11 +28,12 @@ const TEXT_VALUE = "Санкт-Петербург, 東京都";
 
 async function extractText(pdfBytes: Uint8Array): Promise<string> {
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
-  const document = await pdfjs.getDocument({
+  const loadingTask = pdfjs.getDocument({
     data: new Uint8Array(pdfBytes),
     useSystemFonts: false,
     verbosity: 0,
-  }).promise;
+  });
+  const document = await loadingTask.promise;
   const parts: string[] = [];
 
   for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
@@ -44,7 +45,7 @@ async function extractText(pdfBytes: Uint8Array): Promise<string> {
     );
   }
 
-  await document.destroy();
+  await loadingTask.destroy();
 
   return parts.join("\n");
 }
@@ -685,11 +686,12 @@ const LETTER_PAGE = { heightPt: 792, pageNumber: 1, widthPt: 612 };
 
 async function extractTextItems(pdfBytes: Uint8Array) {
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
-  const document = await pdfjs.getDocument({
+  const loadingTask = pdfjs.getDocument({
     data: new Uint8Array(pdfBytes),
     useSystemFonts: false,
     verbosity: 0,
-  }).promise;
+  });
+  const document = await loadingTask.promise;
   const page = await document.getPage(1);
   const content = await page.getTextContent();
   const items = (
@@ -707,7 +709,7 @@ async function extractTextItems(pdfBytes: Uint8Array) {
       y: item.transform![5]!,
     }));
 
-  await document.destroy();
+  await loadingTask.destroy();
 
   return items;
 }

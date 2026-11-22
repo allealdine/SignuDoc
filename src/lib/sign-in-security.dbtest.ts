@@ -6,21 +6,21 @@ import { after, before, beforeEach, test } from "node:test";
 import type pg from "pg";
 
 import type { createAppAuth as CreateAppAuth } from "./auth/server.ts";
+import { UNKNOWN_ADDRESS_FAILURES_RECORDED_PER_HOUR } from "./auth/sign-in-events.ts";
 import { replaceDbPoolForTests } from "./db/connection.ts";
 import { openTestDatabase } from "./db/test-database.ts";
 import { clearRateLimitStoreForTests } from "./security/rate-limit.ts";
-import { UNKNOWN_ADDRESS_FAILURES_RECORDED_PER_HOUR } from "./auth/sign-in-events.ts";
 import {
   listSystemAuditEvents,
   verifySystemAuditChain,
 } from "./services/system-audit.ts";
-import { invalidateSettingsCache, saveSettings } from "./settings.ts";
 import { enforceSessionLimits } from "./session-controls.ts";
+import { invalidateSettingsCache, saveSettings } from "./settings.ts";
 import {
   MAX_FAILED_SIGN_INS,
   resetTwoFactor,
-  setTwoFactorRequirement,
   SignInSecurityError,
+  setTwoFactorRequirement,
 } from "./sign-in-security.ts";
 
 // Sign-in security against a real Postgres and the real Better Auth

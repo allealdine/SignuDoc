@@ -5,9 +5,8 @@ import pg, {
   type QueryResult,
   type QueryResultRow,
 } from "pg";
-
-import { getEnv } from "../utils/env.ts";
 import { requireConfigValue } from "../services/service-config.ts";
+import { getEnv } from "../utils/env.ts";
 
 declare global {
   var __signudocPgPool: Pool | undefined;

@@ -2,9 +2,9 @@ import { ZodError } from "zod";
 
 import type { ApiKeyScope } from "../api-keys.ts";
 import {
+  type RateLimitState,
   requireApiKey,
   withRateLimitHeaders,
-  type RateLimitState,
 } from "../auth/api-key.ts";
 import { DownloadAccessError } from "../downloads.ts";
 import { EmbeddingError } from "../embedding.ts";
@@ -24,7 +24,7 @@ import { DocumentImportError } from "../services/document-import.ts";
 import { PendingUploadError } from "../services/pending-uploads.ts";
 import { TemplateError } from "../templates.ts";
 import { scheduleWebhookDrainIfDue } from "../webhooks/deliver.ts";
-import { describeZodError, type ApiActor } from "./envelopes.ts";
+import { type ApiActor, describeZodError } from "./envelopes.ts";
 import { apiError, apiJson, codeForStatus } from "./http.ts";
 import {
   claimIdempotencyKey,

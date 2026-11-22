@@ -1,4 +1,4 @@
-import { issueSignedToken, type IssuedSignedToken } from "@vercel/blob";
+import { type IssuedSignedToken, issueSignedToken } from "@vercel/blob";
 import { handleUploadPresigned } from "@vercel/blob/client";
 
 import { MAX_UPLOAD_SIZE_BYTES } from "../types/domain.ts";

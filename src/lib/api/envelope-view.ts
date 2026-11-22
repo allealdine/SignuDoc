@@ -1,11 +1,11 @@
 import { z } from "zod";
 
 import {
+  type DbExecutor,
+  type DbPool,
   getDb,
   queryMany,
   queryOne,
-  type DbExecutor,
-  type DbPool,
 } from "../db/connection.ts";
 import { signingStepOf } from "../signing-steps.ts";
 import type { EnvelopeStatus, SignerStatus } from "../types/domain.ts";

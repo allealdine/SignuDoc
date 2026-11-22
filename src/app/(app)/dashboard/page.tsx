@@ -3,10 +3,11 @@ import { isAdminUser } from "@/lib/auth/admin";
 import { getAuthSession } from "@/lib/auth/server";
 import { getDb } from "@/lib/db/connection";
 import {
+  type DashboardEnvelopePage,
   listAllEnvelopesForAdmin,
   listEnvelopesForUser,
-  type DashboardEnvelopePage,
 } from "@/lib/envelopes";
+import { getRequestLocale } from "@/lib/i18n/request.ts";
 
 /** Envelopes on one page of the dashboard. */
 const DASHBOARD_PAGE_SIZE = 48;
@@ -50,7 +51,10 @@ function buildDashboardHref({
 export default async function DashboardPage({
   searchParams,
 }: DashboardPageProps) {
-  const session = await getAuthSession();
+  const [session, locale] = await Promise.all([
+    getAuthSession(),
+    getRequestLocale(),
+  ]);
   const database = getDb();
   const params = await searchParams;
   const view = firstValue(params.view);
@@ -80,8 +84,18 @@ export default async function DashboardPage({
     result = !session
       ? { envelopes: [], hasMore: false }
       : showAll
-        ? await listAllEnvelopesForAdmin(session.user.id, filters, database)
-        : await listEnvelopesForUser(session.user.id, filters, database);
+        ? await listAllEnvelopesForAdmin(
+            session.user.id,
+            filters,
+            database,
+            locale,
+          )
+        : await listEnvelopesForUser(
+            session.user.id,
+            filters,
+            database,
+            locale,
+          );
     // Nothing at all yet, as opposed to nothing that matches or nothing
     // on this page.
     initialState =

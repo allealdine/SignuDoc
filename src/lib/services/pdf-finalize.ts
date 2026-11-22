@@ -3,43 +3,43 @@ import { randomUUID } from "node:crypto";
 import { PDFDocument, type PDFImage, type PDFPage, rgb } from "pdf-lib";
 
 import {
-  auditEventRecordSchema,
   type AuditEventRecord,
+  auditEventRecordSchema,
   type EnvelopeRecord,
 } from "../schemas/envelope.ts";
 import type { FieldRecord } from "../schemas/field.ts";
 import type { SignerRecord } from "../schemas/signer.ts";
+import { getBranding } from "../settings.ts";
 import { buildSignatureManifestation } from "../signature-meanings.ts";
 import { hasSharedSigningStep, signingStepOf } from "../signing-steps.ts";
-import { describeSignerCorrectedEvent } from "./audit.ts";
-import { isCapturedMessageId } from "./captured-email.ts";
 import { canonicalJson } from "../utils/canonical-json.ts";
 import { normalizedRectToPdfRect } from "../utils/pdf-coords.ts";
+import { describeSignerCorrectedEvent } from "./audit.ts";
+import { isCapturedMessageId } from "./captured-email.ts";
 import { embedTextFaces, type TextFace } from "./pdf-fonts.ts";
 import {
+  type DisplayedPageGeometry,
   drawOnDisplayedPage,
   fieldOnDisplayedPage,
   getDisplayedPageGeometry,
-  type DisplayedPageGeometry,
   type StoredPageSize,
 } from "./pdf-page-geometry.ts";
 import { sha256Hex } from "./pdf-seal.ts";
-import { getBranding } from "../settings.ts";
 import {
   finishSignerSignedPdf,
   getSealIdentity,
-  saveInstallSealedPdf,
   type SealPurpose,
+  saveInstallSealedPdf,
 } from "./seal-identity.ts";
-import {
-  buildEnvelopeCertificateKey,
-  buildEnvelopeSignedPdfKey,
-} from "./storage-keys.ts";
 import {
   createStorageService,
   type StorageObjectRef,
   type StorageService,
 } from "./storage.ts";
+import {
+  buildEnvelopeCertificateKey,
+  buildEnvelopeSignedPdfKey,
+} from "./storage-keys.ts";
 
 const DEFAULT_AUDIT_PAGE_SIZE = {
   height: 792,
@@ -607,8 +607,8 @@ function getEnvelopeStatusLabel(status: EnvelopeRecord["status"]): string {
 
 function getCertificateTitle(envelope: EnvelopeRecord): string {
   return envelope.status === "completed"
-    ? "SignuDoc Certificate of Completion"
-    : "SignuDoc Audit Certificate";
+    ? "Sakta Certificate of Completion"
+    : "Sakta Audit Certificate";
 }
 
 function getTerminalTimestampLabel(envelope: EnvelopeRecord): string {
@@ -1663,7 +1663,7 @@ export async function renderEnvelopeCertificatePdf(
     signers: input.signers,
   });
   pdfDocument.setTitle(`Audit certificate: ${input.envelope.title}`);
-  pdfDocument.setProducer("SignuDoc");
+  pdfDocument.setProducer("Sakta");
 
   return seal(pdfDocument, "certificate");
 }

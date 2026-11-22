@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { locales } from "../i18n/types.ts";
 import {
   MAX_COPY_RECIPIENTS_PER_ENVELOPE,
   MAX_SIGNERS_CEILING,
@@ -152,6 +153,9 @@ export const signerRecordSchema = draftSignerSchema.extend({
   declinedAt: unixTimestampSchema.nullable().optional(),
   declineReason: optionalTrimmedString(1000).nullable().optional(),
   createdAt: unixTimestampSchema,
+  // Set when the envelope was sent. Older rows have no locale, so keep it
+  // optional and let readers fall back to English.
+  locale: z.enum(locales).nullable().optional(),
   updatedAt: unixTimestampSchema,
 });
 

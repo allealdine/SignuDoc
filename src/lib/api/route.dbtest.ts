@@ -140,89 +140,84 @@ test("a request whose envelope could not be noted keeps its key, so a retry cann
   );
 });
 
-test(
-  "a retry answering from the envelope does not replace the response the first request kept",
-  {
-    timeout: 10_000,
-  },
-  async () => {
-    const key = `order-${randomUUID()}`;
-    const context = await createContext(key);
-    const body = '{"title":"Lease"}';
-    let recoveryStarted!: () => void;
-    const recovering = new Promise<void>((resolve) => {
-      recoveryStarted = resolve;
-    });
-    let letRecoveryFinish!: () => void;
-    const recoveryMayFinish = new Promise<void>((resolve) => {
-      letRecoveryFinish = resolve;
-    });
-    let retry: Promise<Response> | undefined;
-    let first: Response;
+test("a retry answering from the envelope does not replace the response the first request kept", {
+  timeout: 10_000,
+}, async () => {
+  const key = `order-${randomUUID()}`;
+  const context = await createContext(key);
+  const body = '{"title":"Lease"}';
+  let recoveryStarted!: () => void;
+  const recovering = new Promise<void>((resolve) => {
+    recoveryStarted = resolve;
+  });
+  let letRecoveryFinish!: () => void;
+  const recoveryMayFinish = new Promise<void>((resolve) => {
+    letRecoveryFinish = resolve;
+  });
+  let retry: Promise<Response> | undefined;
+  let first: Response;
 
-    try {
-      first = await route.runIdempotently(
-        context,
-        "POST /api/v1/envelopes",
-        body,
-        async (remember) => {
-          await remember("envelope-1");
+  try {
+    first = await route.runIdempotently(
+      context,
+      "POST /api/v1/envelopes",
+      body,
+      async (remember) => {
+        await remember("envelope-1");
 
-          // A retry comes in now. The envelope is noted and no response is
-          // kept yet, so it answers from the envelope, and finishes only
-          // after this request has kept its own response.
-          retry = route.runIdempotently(
-            context,
-            "POST /api/v1/envelopes",
-            body,
-            () =>
-              Promise.reject(new Error("A retry must not make an envelope.")),
-            async () => {
-              recoveryStarted();
-              await recoveryMayFinish;
+        // A retry comes in now. The envelope is noted and no response is
+        // kept yet, so it answers from the envelope, and finishes only
+        // after this request has kept its own response.
+        retry = route.runIdempotently(
+          context,
+          "POST /api/v1/envelopes",
+          body,
+          () => Promise.reject(new Error("A retry must not make an envelope.")),
+          async () => {
+            recoveryStarted();
+            await recoveryMayFinish;
 
-              return { body: { from: "retry" }, status: 201 };
-            },
+            return { body: { from: "retry" }, status: 201 };
+          },
+        );
+
+        // A retry that settles without answering from the envelope fails
+        // the test now, with its own error, instead of at the timeout.
+        const settledFirst = retry.then(() => {
+          throw new Error(
+            "The retry finished without answering from the envelope.",
           );
+        });
 
-          // A retry that settles without answering from the envelope fails
-          // the test now, with its own error, instead of at the timeout.
-          const settledFirst = retry.then(() => {
-            throw new Error(
-              "The retry finished without answering from the envelope.",
-            );
-          });
+        settledFirst.catch(() => undefined);
+        await Promise.race([recovering, settledFirst]);
 
-          settledFirst.catch(() => undefined);
-          await Promise.race([recovering, settledFirst]);
-
-          return { body: { from: "first" }, status: 201 };
-        },
-      );
-    } finally {
-      letRecoveryFinish();
-    }
-
-    const second = await retry!;
-
-    assert.equal(first.status, 201);
-    assert.deepEqual(await first.json(), { from: "first" });
-    assert.equal(second.status, 201);
-    assert.equal(second.headers.get("idempotent-replayed"), "true");
-    assert.deepEqual(await second.json(), { from: "first" });
-    assert.deepEqual(
-      await claimIdempotencyKey(
-        {
-          apiKeyId: context.actor.apiKeyId,
-          key,
-          requestHash: hashRequest("POST /api/v1/envelopes", body),
-        },
-        db(),
-      ),
-      { kind: "replay", response: { from: "first" }, statusCode: 201 },
+        return { body: { from: "first" }, status: 201 };
+      },
     );
-  },
-);
+  } finally {
+    letRecoveryFinish();
+  }
+
+  const second = await retry!;
+
+  assert.equal(first.status, 201);
+  assert.deepEqual(await first.json(), { from: "first" });
+  assert.equal(second.status, 201);
+  assert.equal(second.headers.get("idempotent-replayed"), "true");
+  assert.deepEqual(await second.json(), { from: "first" });
+  assert.deepEqual(
+    await claimIdempotencyKey(
+      {
+        apiKeyId: context.actor.apiKeyId,
+        key,
+        requestHash: hashRequest("POST /api/v1/envelopes", body),
+      },
+      db(),
+    ),
+    { kind: "replay", response: { from: "first" }, statusCode: 201 },
+  );
+});
 
 test("a first request that finishes after a retry answered for it gives the answer the retry kept", async () => {
   const key = `order-${randomUUID()}`;

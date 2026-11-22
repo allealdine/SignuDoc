@@ -9,12 +9,12 @@ import { PDFDocument } from "pdf-lib";
 import type pg from "pg";
 
 import { openTestDatabase } from "./db/test-database.ts";
-import { EMAIL_CODE_RESEND_SECONDS } from "./signer-checks.ts";
 import { issueSigningLink } from "./services/signing-links.ts";
 import {
   createStorageService,
   type StorageService,
 } from "./services/storage.ts";
+import { EMAIL_CODE_RESEND_SECONDS } from "./signer-checks.ts";
 import { sendSignerEmailCode } from "./signing.ts";
 
 // Asking for a new one-time code during the resend cooldown, against a real

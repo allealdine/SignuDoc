@@ -1,24 +1,23 @@
-import { type EnvSource } from "../utils/env.ts";
+import type { EnvSource } from "../utils/env.ts";
 import { createBlobStorageService } from "./storage/blob.ts";
 import { resolveStorageDriver } from "./storage/driver.ts";
 import { createLocalStorageService } from "./storage/local.ts";
-import { type StorageService } from "./storage/types.ts";
-
-export {
-  StorageObjectNotFoundError,
-  type StorageObject,
-  type StorageObjectHead,
-  type StorageObjectRef,
-  type StorageObjectStream,
-  type StorageService,
-} from "./storage/types.ts";
+import type { StorageService } from "./storage/types.ts";
 
 export {
   hasBlobCredentials,
   resolveStorageDriver,
-  supportsDirectUploads,
   type StorageDriver,
+  supportsDirectUploads,
 } from "./storage/driver.ts";
+export {
+  type StorageObject,
+  type StorageObjectHead,
+  StorageObjectNotFoundError,
+  type StorageObjectRef,
+  type StorageObjectStream,
+  type StorageService,
+} from "./storage/types.ts";
 
 type CreateStorageServiceOptions = {
   env?: EnvSource;

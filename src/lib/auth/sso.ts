@@ -1,4 +1,4 @@
-import { readEnv, type EnvSource } from "../utils/env.ts";
+import { type EnvSource, readEnv } from "../utils/env.ts";
 
 // Single sign-on with the organization's own identity provider, over OpenID
 // Connect: Okta, Microsoft Entra ID, Google Workspace, or any other provider

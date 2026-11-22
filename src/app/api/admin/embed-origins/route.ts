@@ -7,11 +7,11 @@ import {
   removeEmbedOrigin,
 } from "@/lib/embedding";
 import {
+  type AdminRouteWords,
   handleWebhookAdmin,
   noStore,
   notAJsonObject,
   readJsonObject,
-  type AdminRouteWords,
 } from "@/lib/webhooks/admin-route";
 
 // The sites allowed to show signing pages in a frame (embedded signing).

@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, type ChangeEvent, type FormEvent } from "react";
+import { type ChangeEvent, type FormEvent, useState } from "react";
 
 import { FieldShell, ShellButton } from "@/components/shared/form-shell";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Textarea } from "@/components/ui/textarea";
+import { formatMessage } from "@/lib/i18n/format.ts";
+import { useMessages } from "@/lib/i18n/messages-provider.tsx";
 import { contactFormSchema } from "@/lib/schemas/contact";
 
 type ContactFormValues = {
@@ -30,15 +32,8 @@ const defaultValues: ContactFormValues = {
   name: "",
 };
 
-function readApiErrorMessage(payload: ContactApiPayload): string {
-  if (typeof payload?.error === "string" && payload.error.trim()) {
-    return payload.error;
-  }
-
-  return "Something went wrong. Please try again.";
-}
-
 export function ContactForm() {
+  const copy = useMessages().messages.contact.form;
   const [values, setValues] = useState<ContactFormValues>(defaultValues);
   const [errors, setErrors] = useState<ContactFormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -89,18 +84,18 @@ export function ContactForm() {
         const field = issue.path[0];
 
         if (field === "name") {
-          nextErrors.name = "Enter your name";
+          nextErrors.name = copy.errors.name;
         }
 
         if (field === "email") {
-          nextErrors.email = "Enter a valid email address";
+          nextErrors.email = copy.errors.email;
         }
 
         if (field === "message") {
           nextErrors.message =
             issue.code === "too_big"
-              ? "Message must be 5000 characters or fewer"
-              : "Enter a message";
+              ? copy.errors.messageTooLong
+              : copy.errors.message;
         }
       }
 
@@ -144,17 +139,27 @@ export function ContactForm() {
               ? payload.fieldErrors.name
               : undefined,
         });
-        setSubmitError(readApiErrorMessage(payload));
+        // Rate limiting and bot protection answer with shared messages in
+        // English, so use our own copy for those two statuses.
+        setSubmitError(
+          response.status === 429
+            ? copy.errors.tooManyRequests
+            : response.status === 403
+              ? copy.errors.botRejected
+              : typeof payload?.error === "string" && payload.error.trim()
+                ? payload.error
+                : copy.errors.generic,
+        );
         return;
       }
 
       setValues(defaultValues);
       setErrors({});
       setSuccessMessage(
-        `Your message was sent. We’ll follow up at ${validationResult.data.email} if we need more detail.`,
+        formatMessage(copy.success, { email: validationResult.data.email }),
       );
     } catch {
-      setSubmitError("Something went wrong. Please try again.");
+      setSubmitError(copy.errors.generic);
     } finally {
       setIsSubmitting(false);
     }
@@ -167,7 +172,7 @@ export function ContactForm() {
           aria-hidden="true"
           className="pointer-events-none absolute -left-[10000px] top-auto h-px w-px overflow-hidden"
         >
-          <label htmlFor="company">Company</label>
+          <label htmlFor="company">{copy.company}</label>
           <input
             autoComplete="off"
             id="company"
@@ -191,10 +196,10 @@ export function ContactForm() {
             autoComplete="name"
             disabled={isSubmitting}
             error={errors.name}
-            label="Name"
+            label={copy.name}
             name="contact-name"
             onChange={handleChange("name")}
-            placeholder="Your name"
+            placeholder={copy.namePlaceholder}
             readOnly={false}
             value={values.name}
           />
@@ -202,10 +207,10 @@ export function ContactForm() {
             autoComplete="email"
             disabled={isSubmitting}
             error={errors.email}
-            label="Email"
+            label={copy.email}
             name="contact-email"
             onChange={handleChange("email")}
-            placeholder="you@example.com"
+            placeholder={copy.emailPlaceholder}
             readOnly={false}
             type="email"
             value={values.email}
@@ -217,7 +222,7 @@ export function ContactForm() {
             className="text-[0.8125rem] font-semibold text-(--secondary)"
             htmlFor="contact-message"
           >
-            Message
+            {copy.message}
           </FieldLabel>
           <Textarea
             aria-describedby="contact-message-description"
@@ -227,7 +232,7 @@ export function ContactForm() {
             id="contact-message"
             name="contact-message"
             onChange={handleChange("message")}
-            placeholder="Tell us what you need, and include any account email, sender name, document title, or link that helps us identify the request."
+            placeholder={copy.messagePlaceholder}
             value={values.message}
           />
           {errors.message ? (
@@ -242,7 +247,7 @@ export function ContactForm() {
 
         <div className="flex pt-1 sm:justify-end">
           <ShellButton loading={isSubmitting} type="submit">
-            {isSubmitting ? "Sending..." : "Send message"}
+            {isSubmitting ? copy.sending : copy.submit}
           </ShellButton>
         </div>
       </form>

@@ -1,23 +1,22 @@
 import {
-  X509Certificate,
   createCipheriv,
   createDecipheriv,
   generateKeyPairSync,
   hkdfSync,
   randomBytes,
   randomUUID,
+  X509Certificate,
 } from "node:crypto";
 
 import { PDFDocument } from "pdf-lib";
-
-import { getDb, withTransaction, type DbPool } from "../db/connection.ts";
 import type { Branding } from "../branding.ts";
+import { type DbPool, getDb, withTransaction } from "../db/connection.ts";
 import { getBranding } from "../settings.ts";
 import {
+  type EnvSource,
   isProduction,
   readEnv,
   resolveAuthSecret,
-  type EnvSource,
 } from "../utils/env.ts";
 import {
   addLongTermValidation,
@@ -28,10 +27,10 @@ import {
 import {
   createSelfSignedSealIdentity,
   requestDocumentTimestamp,
-  saveSealedPdf,
-  sealIdentityFromPkcs12,
   type SealIdentity,
   type SealOptions,
+  saveSealedPdf,
+  sealIdentityFromPkcs12,
 } from "./pdf-seal.ts";
 
 // Where the install's seal key comes from:
@@ -218,7 +217,10 @@ async function identityFromDatabase(
 export async function getSealIdentity({
   database = getDb(),
   env = process.env,
-}: { database?: DbPool; env?: EnvSource } = {}): Promise<SealIdentity> {
+}: {
+  database?: DbPool;
+  env?: EnvSource;
+} = {}): Promise<SealIdentity> {
   const cached = globalThis.__signudocSealIdentity;
 
   if (cached) {

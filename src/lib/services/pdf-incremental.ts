@@ -1,16 +1,16 @@
 import { createHash } from "node:crypto";
 
 import {
+  decodePDFRawStream,
   PDFArray,
   PDFDict,
   PDFDocument,
   PDFName,
   PDFNumber,
+  type PDFObject,
   PDFRawStream,
   PDFRef,
   PDFString,
-  decodePDFRawStream,
-  type PDFObject,
 } from "pdf-lib";
 
 // Incremental updates: new and changed objects appended after the end of a
@@ -180,7 +180,7 @@ export function appendIncrementalUpdate(
   const numbers = [...offsets.keys()].sort((a, b) => a - b);
   let xref = "xref\n";
 
-  for (let index = 0; index < numbers.length;) {
+  for (let index = 0; index < numbers.length; ) {
     let end = index;
 
     while (end + 1 < numbers.length && numbers[end + 1] === numbers[end]! + 1) {

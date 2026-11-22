@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { UseTemplateShell } from "@/components/templates/use-template-shell";
 import { getAuthSession } from "@/lib/auth/server";
 import { getDb } from "@/lib/db/connection";
+import { getRequestLocale } from "@/lib/i18n/request.ts";
 import { getUseTemplateDataForUser, TemplateError } from "@/lib/templates";
 
 type UseTemplatePageProps = {
@@ -20,10 +21,13 @@ export default async function UseTemplatePage({
   let failed = false;
 
   try {
-    const session = await getAuthSession();
+    const [session, locale] = await Promise.all([
+      getAuthSession(),
+      getRequestLocale(),
+    ]);
 
     template = session
-      ? await getUseTemplateDataForUser(session.user.id, id, getDb())
+      ? await getUseTemplateDataForUser(session.user.id, id, getDb(), locale)
       : null;
   } catch (error) {
     failed = true;

@@ -1,17 +1,16 @@
 import { NextResponse } from "next/server";
-
-import {
-  deleteWebhookEndpoint,
-  parseWebhookDescription,
-  updateWebhookEndpoint,
-} from "@/lib/webhooks/endpoints";
-import { parseWebhookEventTypes } from "@/lib/webhooks/events";
 import {
   handleWebhookAdmin,
   noStore,
   notAJsonObject,
   readJsonObject,
 } from "@/lib/webhooks/admin-route";
+import {
+  deleteWebhookEndpoint,
+  parseWebhookDescription,
+  updateWebhookEndpoint,
+} from "@/lib/webhooks/endpoints";
+import { parseWebhookEventTypes } from "@/lib/webhooks/events";
 
 type RouteContext = { params: Promise<{ id: string }> };
 

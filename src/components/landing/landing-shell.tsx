@@ -1,5 +1,4 @@
 import type { LucideIcon } from "lucide-react";
-import Link from "next/link";
 import {
   CheckIcon,
   ClipboardCheck,
@@ -8,46 +7,23 @@ import {
   ShieldCheck,
   XIcon,
 } from "lucide-react";
-
-import { Brand, BrandMark } from "@/components/layout/brand";
-import { PublicSessionMenu } from "@/components/layout/public-session-menu";
-import { PublicLegalFooter } from "@/components/layout/public-legal-links";
+import Link from "next/link";
 import { LandingDashboardPreview } from "@/components/landing/dashboard-preview";
 import {
   LandingSessionLoginAction,
   LandingSessionPrimaryAction,
 } from "@/components/landing/landing-session-actions";
+import { Brand, BrandMark } from "@/components/layout/brand";
+import { PublicLegalFooter } from "@/components/layout/public-legal-links";
+import { PublicSessionMenu } from "@/components/layout/public-session-menu";
 import { buttonVariants } from "@/components/ui/button";
+import { SIGNUDOC_NAME } from "@/lib/branding.ts";
 import { cn } from "@/lib/cn";
+import type { Messages } from "@/lib/i18n/locales/en.ts";
+import { getMessages } from "@/lib/i18n/messages.ts";
+import { getRequestLocale } from "@/lib/i18n/request.ts";
 
-type WorkflowStep = {
-  body: string;
-  title: string;
-};
-
-type FaqItem = {
-  answer: string;
-  question: string;
-};
-
-const workflowSteps: readonly WorkflowStep[] = [
-  {
-    title: "Upload your PDF",
-    body: "Bring the contract you already wrote. No template rebuilding.",
-  },
-  {
-    title: "Add signers",
-    body: "Pick who signs first, second, third. Each person gets invited after the last one finishes.",
-  },
-  {
-    title: "Place fields",
-    body: "Drop signature, initials, date, text, and checkbox fields onto the page.",
-  },
-  {
-    title: "Send and track",
-    body: "Fire off a signing link. Nudge the slow ones. Download the final PDF.",
-  },
-] as const;
+type ComparisonCopy = Messages["landing"]["comparison"];
 
 type ComparisonRow = {
   feature: string;
@@ -55,83 +31,47 @@ type ComparisonRow = {
   perSeat: string | boolean;
 };
 
-const comparisonRows: readonly ComparisonRow[] = [
-  {
-    feature: "Price",
-    signudoc: "Free forever",
-    perSeat: "Per user, every month",
-  },
-  {
-    feature: "Envelopes per month",
-    signudoc: "Unlimited",
-    perSeat: "Capped by plan",
-  },
-  {
-    feature: "Signers per document",
-    signudoc: "Up to 25",
-    perSeat: "Varies by plan",
-  },
-  { feature: "Reminders", signudoc: true, perSeat: "Higher plans only" },
-] as const;
-
-const faqItems: readonly FaqItem[] = [
-  {
-    question: "Do signers need a SignuDoc account?",
-    answer:
-      "Nope. You sign in to send documents, but your signers just click a link and sign. No account, no friction.",
-  },
-  {
-    question: "What field types can I place on a document?",
-    answer:
-      "Signature, initials, date, text, and checkbox. Everything most documents need.",
-  },
-  {
-    question: "Can I remind a signer if they are taking too long?",
-    answer:
-      "Yes. Hit the remind button and they get a nudge. No need to resend the whole document.",
-  },
-  {
-    question: "What do I get when everyone finishes signing?",
-    answer:
-      "You get the final signed PDF plus a tamper-proof certificate. Download both in one click.",
-  },
-] as const;
-
 type SecurityPillar = {
   body: string;
   icon: LucideIcon;
   title: string;
 };
 
-const securityPillars: readonly SecurityPillar[] = [
-  {
-    title: "Encrypted at rest and in transit",
-    body: "Documents are kept in private, encrypted storage. All connections use HTTPS with HSTS enforcement.",
-    icon: ShieldCheck,
-  },
-  {
-    title: "Complete audit trail",
-    body: "Every view, signature, and decline is logged with timestamps and IP addresses. Download the certificate PDF as proof.",
-    icon: ClipboardCheck,
-  },
-  {
-    title: "Secure signing links",
-    body: "Each signer gets a unique cryptographic token. Links expire at the deadline the sender sets and can't be guessed or reused.",
-    icon: Link2,
-  },
-  {
-    title: "Open source",
-    body: "The entire codebase is public. Inspect the security model, audit the logic, or self-host on your own infrastructure.",
-    icon: Globe,
-  },
-];
+// The copy comes from the active dictionary; only the icons stay with the UI.
+const securityIcons = [ShieldCheck, ClipboardCheck, Link2, Globe] as const;
 
 const sectionHeadingClassName =
   "text-[clamp(1.875rem,4vw,2.75rem)] font-extrabold leading-[1.08] tracking-[-0.035em] text-(--fg)";
 const sectionLeadClassName =
   "mx-auto mt-4 max-w-xl text-[1.0625rem] leading-relaxed text-(--secondary)";
 
-export function LandingShell() {
+export async function LandingShell() {
+  const landing = getMessages(await getRequestLocale()).landing;
+  const workflowSteps = landing.workflow.steps;
+  const faqItems = landing.faq.items;
+  const comparisonRows: readonly ComparisonRow[] = [
+    {
+      feature: landing.comparison.rows.price.feature,
+      perSeat: landing.comparison.rows.price.perSeat,
+      signudoc: landing.comparison.rows.price.signudoc,
+    },
+    {
+      feature: landing.comparison.rows.envelopes.feature,
+      perSeat: landing.comparison.rows.envelopes.perSeat,
+      signudoc: landing.comparison.rows.envelopes.signudoc,
+    },
+    {
+      feature: landing.comparison.rows.signers.feature,
+      perSeat: landing.comparison.rows.signers.perSeat,
+      signudoc: landing.comparison.rows.signers.signudoc,
+    },
+    {
+      feature: landing.comparison.rows.reminders.feature,
+      perSeat: landing.comparison.rows.reminders.perSeat,
+      signudoc: true,
+    },
+  ];
+
   return (
     <div className="flex min-h-screen flex-col text-(--fg)">
       <header className="sticky top-0 z-30 bg-[rgba(243,244,248,0.86)] backdrop-blur-md">
@@ -140,7 +80,7 @@ export function LandingShell() {
 
           <PublicSessionMenu>
             <nav
-              aria-label="Public navigation"
+              aria-label={landing.nav.ariaLabel}
               className="flex items-center gap-1 sm:gap-2"
             >
               <Link
@@ -151,14 +91,14 @@ export function LandingShell() {
                 href="/login"
                 prefetch
               >
-                Log in
+                {landing.actions.logIn}
               </Link>
               <Link
                 className={buttonVariants({ size: "sm" })}
                 href="/signup"
                 prefetch
               >
-                Start free
+                {landing.actions.startFree}
               </Link>
             </nav>
           </PublicSessionMenu>
@@ -171,15 +111,17 @@ export function LandingShell() {
             className="mx-auto max-w-[52rem] text-center"
             data-animate="enter"
           >
-            <SectionMarker>Free e-signature software</SectionMarker>
+            <SectionMarker>{landing.hero.marker}</SectionMarker>
 
             <h1 className="mx-auto max-w-[18ch] text-[clamp(2.375rem,6vw,4.25rem)] font-extrabold leading-[1.04] tracking-[-0.045em] text-(--fg)">
-              Sign PDFs Online for Free.{" "}
-              <span className="text-(--accent)">No catch.</span>
+              {landing.hero.headline}{" "}
+              <span className="text-(--accent)">
+                {landing.hero.headlineAccent}
+              </span>
             </h1>
 
             <p className="mx-auto mt-5 max-w-xl text-lg leading-relaxed text-(--secondary) sm:text-[1.1875rem]">
-              Upload a PDF, drop in signature fields, and send. That&apos;s it.
+              {landing.hero.lead}
             </p>
 
             <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
@@ -188,7 +130,7 @@ export function LandingShell() {
                 className={buttonVariants({ size: "lg", variant: "outline" })}
                 href="#workflow"
               >
-                See how it works
+                {landing.hero.seeHowItWorks}
               </Link>
             </div>
           </div>
@@ -205,14 +147,11 @@ export function LandingShell() {
         <section className="scroll-mt-20 py-14 lg:py-20" id="workflow">
           <div className="page-width">
             <div className="mx-auto max-w-[40rem] text-center">
-              <SectionMarker>How it works</SectionMarker>
+              <SectionMarker>{landing.workflow.marker}</SectionMarker>
               <h2 className={sectionHeadingClassName}>
-                Four steps. One signed document.
+                {landing.workflow.title}
               </h2>
-              <p className={sectionLeadClassName}>
-                Upload a PDF, set the signing order, place fields, and hit send.
-                Your signers don&apos;t even need an account.
-              </p>
+              <p className={sectionLeadClassName}>{landing.workflow.lead}</p>
             </div>
 
             <ol className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -239,22 +178,18 @@ export function LandingShell() {
         <section className="py-14 lg:py-20">
           <div className="page-width">
             <div className="mx-auto max-w-[40rem] text-center">
-              <SectionMarker>Security</SectionMarker>
+              <SectionMarker>{landing.security.marker}</SectionMarker>
               <h2 className={sectionHeadingClassName}>
-                Your documents stay safe.
+                {landing.security.title}
               </h2>
-              <p className={sectionLeadClassName}>
-                Every PDF is encrypted, every action is logged, and every
-                signing link is cryptographically secured. The code is open
-                source so you can verify it yourself.
-              </p>
+              <p className={sectionLeadClassName}>{landing.security.lead}</p>
             </div>
 
             <div className="mx-auto mt-10 grid max-w-[60rem] gap-4 sm:grid-cols-2">
-              {securityPillars.map((pillar) => (
+              {landing.security.pillars.map((pillar, index) => (
                 <SecurityPillarCard
                   body={pillar.body}
-                  icon={pillar.icon}
+                  icon={securityIcons[index] ?? Globe}
                   key={pillar.title}
                   title={pillar.title}
                 />
@@ -266,25 +201,31 @@ export function LandingShell() {
         <section className="py-14 lg:py-20">
           <div className="page-width">
             <div className="mx-auto max-w-[40rem] text-center">
-              <SectionMarker>Pricing</SectionMarker>
+              <SectionMarker>{landing.pricing.marker}</SectionMarker>
               <h2 className={sectionHeadingClassName}>
-                Free beats $120 a year.
+                {landing.pricing.title}
               </h2>
-              <p className={sectionLeadClassName}>
-                Everything below is included. Forever. For $0. See how that
-                stacks up against a typical per-seat e-signature plan.
-              </p>
+              <p className={sectionLeadClassName}>{landing.pricing.lead}</p>
             </div>
 
             <div className="mx-auto mt-10 max-w-[60rem]">
-              <ComparisonTable />
+              <ComparisonTable
+                copy={landing.comparison}
+                rows={comparisonRows}
+              />
             </div>
 
             <div className="mt-8 flex flex-col items-center gap-3 text-center">
               <LandingSessionPrimaryAction />
               <p className="text-sm text-(--tertiary)">
-                Your signers never need to create an account.
+                {landing.pricing.signersNote}
               </p>
+              <Link
+                className="text-sm font-semibold text-(--accent-ink) underline decoration-[rgb(var(--accent-rgb)/0.35)] underline-offset-4"
+                href="/pricing"
+              >
+                {landing.pricing.allPlans}
+              </Link>
             </div>
           </div>
         </section>
@@ -293,8 +234,8 @@ export function LandingShell() {
           <div className="page-width">
             <div className="mx-auto max-w-[48rem]">
               <div className="text-center">
-                <SectionMarker>FAQ</SectionMarker>
-                <h2 className={sectionHeadingClassName}>Quick answers.</h2>
+                <SectionMarker>{landing.faq.marker}</SectionMarker>
+                <h2 className={sectionHeadingClassName}>{landing.faq.title}</h2>
               </div>
               <div className="mt-8 space-y-3">
                 {faqItems.map((item) => (
@@ -318,12 +259,14 @@ export function LandingShell() {
         <section className="page-width pb-10 pt-6 lg:pb-14">
           <div className="rounded-[2rem] bg-(--accent) px-6 py-14 text-center sm:px-10 lg:py-20">
             <div className="mx-auto max-w-[44rem]">
-              <p className="text-sm font-semibold text-white/80">Start free</p>
+              <p className="text-sm font-semibold text-white/80">
+                {landing.actions.startFree}
+              </p>
               <h2 className="mt-3 text-[clamp(2rem,4.5vw,3.25rem)] font-extrabold leading-[1.06] tracking-[-0.04em] text-white">
-                Send your next agreement. On us.
+                {landing.closing.title}
               </h2>
               <p className="mx-auto mt-4 max-w-xl text-[1.0625rem] leading-relaxed text-white/85">
-                No credit card. No per-envelope fees. Just upload and send.
+                {landing.closing.body}
               </p>
 
               <div className="mt-8 flex flex-wrap justify-center gap-3">
@@ -332,8 +275,7 @@ export function LandingShell() {
               </div>
 
               <p className="mt-7 text-sm text-white/75">
-                Free • no signer account required • up to 25 signers per
-                document
+                {landing.closing.note}
               </p>
             </div>
           </div>
@@ -376,7 +318,13 @@ function SecurityPillarCard({ body, icon: Icon, title }: SecurityPillar) {
   );
 }
 
-function ComparisonTable() {
+function ComparisonTable({
+  copy,
+  rows,
+}: {
+  copy: ComparisonCopy;
+  rows: readonly ComparisonRow[];
+}) {
   return (
     <div className="panel overflow-hidden">
       {/* Desktop table */}
@@ -385,23 +333,23 @@ function ComparisonTable() {
           <thead>
             <tr>
               <th className="w-[36%] px-5 py-4 text-[0.8125rem] font-semibold text-(--tertiary)">
-                Feature
+                {copy.feature}
               </th>
               <th className="w-[32%] rounded-t-2xl bg-(--accent-softer) px-5 py-4 text-center">
                 <span className="inline-flex items-center gap-2 text-[1.0625rem] font-extrabold tracking-[-0.02em] text-(--fg)">
                   <BrandMark className="size-6 rounded-[0.5rem]" />
-                  SignuDoc
+                  {SIGNUDOC_NAME}
                 </span>
               </th>
               <th className="w-[32%] px-5 py-4 text-center">
                 <span className="text-[1.0625rem] font-bold tracking-[-0.02em] text-(--tertiary)">
-                  Per-seat plans
+                  {copy.perSeatPlans}
                 </span>
               </th>
             </tr>
           </thead>
           <tbody>
-            {comparisonRows.map((row, index) => (
+            {rows.map((row, index) => (
               <tr key={row.feature}>
                 <td className="border-t border-(--border) px-5 py-4 text-[0.9375rem] font-semibold text-(--fg)">
                   {row.feature}
@@ -409,13 +357,13 @@ function ComparisonTable() {
                 <td
                   className={cn(
                     "border-t border-[rgb(var(--accent-rgb)/0.12)] bg-(--accent-softer) px-5 py-4 text-center",
-                    index === comparisonRows.length - 1 && "rounded-b-2xl",
+                    index === rows.length - 1 && "rounded-b-2xl",
                   )}
                 >
-                  <ComparisonValue advantage value={row.signudoc} />
+                  <ComparisonValue advantage copy={copy} value={row.signudoc} />
                 </td>
                 <td className="border-t border-(--border) px-5 py-4 text-center text-(--secondary)">
-                  <ComparisonValue value={row.perSeat} />
+                  <ComparisonValue copy={copy} value={row.perSeat} />
                 </td>
               </tr>
             ))}
@@ -425,17 +373,22 @@ function ComparisonTable() {
 
       {/* Mobile stacked layout */}
       <div className="space-y-3 p-4 sm:hidden">
-        {comparisonRows.map((row) => (
+        {rows.map((row) => (
           <div className="well overflow-hidden" key={row.feature}>
             <p className="px-4 pb-2 pt-3.5 text-[0.8125rem] font-semibold text-(--tertiary)">
               {row.feature}
             </p>
             <ComparisonMobileRow
               advantage
-              label="SignuDoc"
+              copy={copy}
+              label={SIGNUDOC_NAME}
               value={row.signudoc}
             />
-            <ComparisonMobileRow label="Per-seat plans" value={row.perSeat} />
+            <ComparisonMobileRow
+              copy={copy}
+              label={copy.perSeatPlans}
+              value={row.perSeat}
+            />
           </div>
         ))}
       </div>
@@ -445,10 +398,12 @@ function ComparisonTable() {
 
 function ComparisonMobileRow({
   advantage = false,
+  copy,
   label,
   value,
 }: {
   advantage?: boolean;
+  copy: ComparisonCopy;
   label: string;
   value: string | boolean;
 }) {
@@ -468,7 +423,7 @@ function ComparisonMobileRow({
         {label}
       </span>
       <span className="max-w-[58%] text-right">
-        <ComparisonValue advantage={advantage} value={value} />
+        <ComparisonValue advantage={advantage} copy={copy} value={value} />
       </span>
     </div>
   );
@@ -476,21 +431,23 @@ function ComparisonMobileRow({
 
 function ComparisonValue({
   advantage = false,
+  copy,
   value,
 }: {
   advantage?: boolean;
+  copy: ComparisonCopy;
   value: string | boolean;
 }) {
   if (typeof value === "boolean") {
     return value ? (
       <span className="inline-flex size-7 items-center justify-center rounded-full bg-(--success-soft) text-(--success)">
         <CheckIcon aria-hidden="true" className="size-4" strokeWidth={3} />
-        <span className="sr-only">Included</span>
+        <span className="sr-only">{copy.included}</span>
       </span>
     ) : (
       <span className="inline-flex size-7 items-center justify-center rounded-full bg-(--danger-soft) text-(--danger)">
         <XIcon aria-hidden="true" className="size-4" strokeWidth={3} />
-        <span className="sr-only">Not included</span>
+        <span className="sr-only">{copy.notIncluded}</span>
       </span>
     );
   }

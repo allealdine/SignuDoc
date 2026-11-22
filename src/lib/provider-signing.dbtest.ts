@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
-import { createHash, randomUUID } from "node:crypto";
 import { execFile } from "node:child_process";
+import { createHash, randomUUID } from "node:crypto";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -27,25 +27,25 @@ import {
   startProviderSigning,
 } from "./provider-signing.ts";
 import { runRetentionSweep } from "./retention.ts";
-import { invalidateSettingsCache } from "./settings.ts";
 import { verifyAuditChain } from "./services/audit.ts";
 import { findSignatures } from "./services/pdf-incremental.ts";
 import { resetValidationCache } from "./services/pdf-ltv.ts";
-import { resetSealIdentityCache } from "./services/seal-identity.ts";
 import { startTestPki, type TestPki } from "./services/pki-test-support.ts";
+import { resetSealIdentityCache } from "./services/seal-identity.ts";
 import { checkSignerSignature } from "./services/signer-cms.ts";
+import { issueSigningLink } from "./services/signing-links.ts";
 import {
   followSigner,
+  type ProviderStandIns,
   STAND_IN_CLIENT,
   startProviderStandIns,
-  type ProviderStandIns,
 } from "./services/signing-provider-test-support.ts";
-import { issueSigningLink } from "./services/signing-links.ts";
-import { getRecipientCertificateKey } from "./services/storage-keys.ts";
 import {
   createStorageService,
   type StorageService,
 } from "./services/storage.ts";
+import { getRecipientCertificateKey } from "./services/storage-keys.ts";
+import { invalidateSettingsCache } from "./settings.ts";
 import {
   recordSignerConsent,
   SigningMutationError,

@@ -2,19 +2,19 @@ import { createHash, timingSafeEqual } from "node:crypto";
 
 import { z } from "zod";
 
-import { getDb, withTransaction, type DbPool } from "./db/connection.ts";
+import { type DbPool, getDb, withTransaction } from "./db/connection.ts";
 import { emailSchema, nameSchema } from "./schemas/common.ts";
 import {
   closeSignupUntilSetupFinishes,
   invalidateSettingsCache,
   readSetupState,
   readStoredSettings,
-  saveSettings,
   type SettingsUpdate,
   type SetupState,
+  saveSettings,
 } from "./settings.ts";
 import { suggestSignupPolicy } from "./signup-policy.ts";
-import { getEnv, isHostedMode, type EnvSource } from "./utils/env.ts";
+import { type EnvSource, getEnv, isHostedMode } from "./utils/env.ts";
 
 // First-run setup: the step that turns a deployment into someone's install.
 //

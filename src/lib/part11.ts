@@ -1,3 +1,4 @@
+import { SIGNUDOC_NAME } from "./branding.ts";
 import {
   type DbExecutor,
   type DbPool,
@@ -6,12 +7,11 @@ import {
   queryOne,
   withTransaction,
 } from "./db/connection.ts";
-import { SIGNUDOC_NAME } from "./branding.ts";
 import { namesMatch } from "./name-match.ts";
 import { createEmailService, type EmailService } from "./services/email.ts";
 import { recordSystemAuditEvent } from "./services/system-audit.ts";
 import { getBranding, getSettings } from "./settings.ts";
-import { type SignatureMeaning } from "./types/domain.ts";
+import type { SignatureMeaning } from "./types/domain.ts";
 
 // Part 11 mode: the controls 21 CFR Part 11 asks of a system that keeps
 // signed electronic records, for installs that turn it on.

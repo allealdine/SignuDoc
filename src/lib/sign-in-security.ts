@@ -49,7 +49,8 @@ function failedSignInKey(email: string): string {
 }
 
 export type SignInLockState =
-  { locked: false } | { locked: true; retryAfterSeconds: number };
+  | { locked: false }
+  | { locked: true; retryAfterSeconds: number };
 
 /** Whether sign-in for this address is stopped by wrong passwords. */
 export async function getSignInLockState(

@@ -3,46 +3,55 @@
 import { useEffect, useState } from "react";
 
 import type { ApiKeySummary } from "@/lib/api-keys";
+import { formatMessage } from "@/lib/i18n/format.ts";
+import { useMessages } from "@/lib/i18n/messages-provider.tsx";
+import { intlLocales } from "@/lib/i18n/types.ts";
 
 // API keys for the public API (/api/v1). Administrators only. A new key is
 // shown once, right after it is made, and never again.
 
-const GENERIC_ERROR_MESSAGE = "Something went wrong. Please try again.";
 const API_DOCS_URL =
   "https://github.com/NYLLON-SOFTWARE/SignuDoc/blob/main/docs/api.md";
 
-const dateFormatter = new Intl.DateTimeFormat("en-US", {
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-});
+function formatDate(seconds: number | null, locale: "en" | "id") {
+  if (seconds === null) {
+    return null;
+  }
 
-function formatDate(seconds: number | null) {
-  return seconds === null
-    ? null
-    : dateFormatter.format(new Date(seconds * 1000));
+  return new Intl.DateTimeFormat(intlLocales[locale], {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(seconds * 1000));
 }
 
 // The same checks the server makes when a key is used, so that a key the
 // API turns away never shows as active. Only a key that could still be
 // used, or one stopped only by its owner's closing account, can be revoked.
-function keyState(key: ApiKeySummary, now: number) {
+type KeyStatus = "active" | "expired" | "revoked" | "stopped";
+
+function keyState(
+  key: ApiKeySummary,
+  now: number,
+): { status: KeyStatus; revocable: boolean; tone: string } {
   if (key.revokedAt !== null) {
-    return { label: "Revoked", revocable: false, tone: "pill-neutral" };
+    return { status: "revoked", revocable: false, tone: "pill-neutral" };
   }
 
   if (key.expiresAt !== null && key.expiresAt <= now) {
-    return { label: "Expired", revocable: false, tone: "pill-warning" };
+    return { status: "expired", revocable: false, tone: "pill-warning" };
   }
 
   if (key.ownerClosing) {
-    return { label: "Stopped", revocable: true, tone: "pill-warning" };
+    return { status: "stopped", revocable: true, tone: "pill-warning" };
   }
 
-  return { label: "Active", revocable: true, tone: "pill-success" };
+  return { status: "active", revocable: true, tone: "pill-success" };
 }
 
 export function ApiKeysPanel() {
+  const { locale, messages } = useMessages();
+  const copy = messages.settings.apiKeys;
   const [keys, setKeys] = useState<ApiKeySummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Why the list did not load, kept apart from the errors of a change so
@@ -80,7 +89,7 @@ export function ApiKeysPanel() {
         }
 
         if (!response.ok || !payload?.keys) {
-          setListError(payload?.error ?? GENERIC_ERROR_MESSAGE);
+          setListError(payload?.error ?? copy.genericError);
           return;
         }
 
@@ -89,7 +98,7 @@ export function ApiKeysPanel() {
         setListError(null);
       } catch {
         if (!cancelled) {
-          setListError(GENERIC_ERROR_MESSAGE);
+          setListError(copy.genericError);
         }
       }
     })();
@@ -127,7 +136,7 @@ export function ApiKeysPanel() {
       } | null;
 
       if (!response.ok || !payload?.key || !payload.summary) {
-        setError(payload?.error ?? GENERIC_ERROR_MESSAGE);
+        setError(payload?.error ?? copy.genericError);
         return;
       }
 
@@ -139,7 +148,7 @@ export function ApiKeysPanel() {
       setKeys((current) => (current ? [created, ...current] : current));
       setRevision((value) => value + 1);
     } catch {
-      setError(GENERIC_ERROR_MESSAGE);
+      setError(copy.genericError);
     } finally {
       setIsCreating(false);
     }
@@ -160,7 +169,7 @@ export function ApiKeysPanel() {
       } | null;
 
       if (!response.ok) {
-        setError(payload?.error ?? GENERIC_ERROR_MESSAGE);
+        setError(payload?.error ?? copy.genericError);
         return;
       }
 
@@ -181,7 +190,7 @@ export function ApiKeysPanel() {
 
       setRevision((value) => value + 1);
     } catch {
-      setError(GENERIC_ERROR_MESSAGE);
+      setError(copy.genericError);
     } finally {
       setPendingId(null);
     }
@@ -206,29 +215,26 @@ export function ApiKeysPanel() {
     <div className="space-y-5 border-t border-(--border) pt-8">
       <div className="space-y-2">
         <h3 className="text-lg font-extrabold tracking-[-0.02em] text-(--fg)">
-          API keys
+          {copy.header.title}
         </h3>
         <p className="max-w-2xl text-sm leading-6 text-(--secondary)">
-          Let another app create and send envelopes through the{" "}
+          {copy.header.descriptionBefore}{" "}
           <a
             className="font-semibold text-(--accent) underline-offset-4 hover:underline"
             href={API_DOCS_URL}
             rel="noreferrer"
             target="_blank"
           >
-            SignuDoc API
+            {copy.header.docsLink}
           </a>
-          . A key acts as the administrator who made it: what it sends shows in
-          their documents. Keys skip two-step sign-in, so keep them in the
-          app&apos;s secret settings, never in a browser, and revoke one as soon
-          as it may have leaked.
+          {copy.header.descriptionAfter}
         </p>
       </div>
 
       <div className="grid max-w-xl gap-4 sm:grid-cols-3">
         <label className="grid gap-1.5 sm:col-span-3">
           <span className="text-[0.8125rem] font-semibold text-(--secondary)">
-            Name
+            {copy.form.name}
           </span>
           <input
             autoComplete="off"
@@ -237,13 +243,13 @@ export function ApiKeysPanel() {
             maxLength={80}
             name="api-key-name"
             onChange={(event) => setName(event.target.value)}
-            placeholder="For example: Billing app"
+            placeholder={copy.form.namePlaceholder}
             value={name}
           />
         </label>
         <label className="grid gap-1.5">
           <span className="text-[0.8125rem] font-semibold text-(--secondary)">
-            Access
+            {copy.form.access}
           </span>
           <select
             className="field-input"
@@ -254,13 +260,13 @@ export function ApiKeysPanel() {
             }
             value={scope}
           >
-            <option value="write">Read and write</option>
-            <option value="read">Read only</option>
+            <option value="write">{copy.form.scopeWrite}</option>
+            <option value="read">{copy.form.scopeRead}</option>
           </select>
         </label>
         <label className="grid gap-1.5">
           <span className="text-[0.8125rem] font-semibold text-(--secondary)">
-            Expires
+            {copy.form.expires}
           </span>
           <select
             className="field-input"
@@ -269,10 +275,10 @@ export function ApiKeysPanel() {
             onChange={(event) => setExpiry(event.target.value)}
             value={expiry}
           >
-            <option value="30">In 30 days</option>
-            <option value="90">In 90 days</option>
-            <option value="365">In a year</option>
-            <option value="never">Never</option>
+            <option value="30">{copy.form.expiry30}</option>
+            <option value="90">{copy.form.expiry90}</option>
+            <option value="365">{copy.form.expiryYear}</option>
+            <option value="never">{copy.form.expiryNever}</option>
           </select>
         </label>
         <div className="flex items-end">
@@ -282,7 +288,7 @@ export function ApiKeysPanel() {
             onClick={() => void createKey()}
             type="button"
           >
-            {isCreating ? "Creating..." : "Create key"}
+            {isCreating ? copy.form.creating : copy.form.create}
           </button>
         </div>
       </div>
@@ -294,7 +300,7 @@ export function ApiKeysPanel() {
           role="status"
         >
           <p className="text-sm font-semibold text-(--fg)">
-            Copy the key for {newKey.name} now. It is not shown again.
+            {formatMessage(copy.newKeyNotice, { name: newKey.name })}
           </p>
           <code className="block overflow-x-auto rounded-lg border border-(--border) bg-(--paper) px-3 py-2 font-mono text-sm break-all text-(--fg)">
             {newKey.key}
@@ -305,14 +311,14 @@ export function ApiKeysPanel() {
               onClick={() => void copyKey()}
               type="button"
             >
-              {copied ? "Copied" : "Copy"}
+              {copied ? copy.copied : copy.copy}
             </button>
             <button
               className="btn-quiet"
               onClick={() => setNewKey(null)}
               type="button"
             >
-              Done
+              {copy.done}
             </button>
           </div>
         </div>
@@ -331,27 +337,27 @@ export function ApiKeysPanel() {
         >
           <span>
             {keys === null
-              ? `The keys could not be loaded. ${listError}`
-              : `The list may be out of date. ${listError}`}
+              ? formatMessage(copy.list.loadError, { error: listError })
+              : formatMessage(copy.list.staleError, { error: listError })}
           </span>
           <button
             className="btn-quiet"
             onClick={() => setRevision((value) => value + 1)}
             type="button"
           >
-            Try again
+            {copy.list.retry}
           </button>
         </div>
       ) : null}
 
       {keys === null ? null : keys.length === 0 ? (
-        <p className="text-sm text-(--secondary)">No keys yet.</p>
+        <p className="text-sm text-(--secondary)">{copy.list.empty}</p>
       ) : (
-        <ul aria-label="API keys" className="grid max-w-2xl gap-3">
+        <ul aria-label={copy.list.ariaLabel} className="grid max-w-2xl gap-3">
           {keys.map((key) => {
             const state = keyState(key, now);
-            const lastUsed = formatDate(key.lastUsedAt);
-            const expires = formatDate(key.expiresAt);
+            const lastUsed = formatDate(key.lastUsedAt, locale);
+            const expires = formatDate(key.expiresAt, locale);
 
             return (
               <li className="well grid gap-2 p-4" key={key.id}>
@@ -359,25 +365,35 @@ export function ApiKeysPanel() {
                   <p className="text-[0.9375rem] font-bold text-(--fg)">
                     {key.name}
                   </p>
-                  <span className={`pill ${state.tone}`}>{state.label}</span>
+                  <span className={`pill ${state.tone}`}>
+                    {copy.status[state.status]}
+                  </span>
                   <span className="pill pill-neutral">
-                    {key.scope === "write" ? "Read and write" : "Read only"}
+                    {key.scope === "write"
+                      ? copy.list.scopeWrite
+                      : copy.list.scopeRead}
                   </span>
                 </div>
                 <p className="font-mono text-sm text-(--secondary)">
                   {key.prefix}…
                 </p>
                 <p className="text-sm text-(--secondary)">
-                  Made by {key.ownerName} on {formatDate(key.createdAt)}.{" "}
-                  {lastUsed ? `Last used ${lastUsed}.` : "Not used yet."}
+                  {formatMessage(copy.list.meta.madeBy, {
+                    ownerName: key.ownerName,
+                    date: formatDate(key.createdAt, locale) ?? "",
+                  })}{" "}
+                  {lastUsed
+                    ? formatMessage(copy.list.meta.lastUsed, { date: lastUsed })
+                    : copy.list.meta.notUsed}
                   {key.revokedAt === null && expires
-                    ? ` Expires ${expires}.`
+                    ? formatMessage(copy.list.meta.expires, { date: expires })
                     : ""}
                 </p>
-                {state.label === "Stopped" ? (
+                {state.status === "stopped" ? (
                   <p className="text-sm text-(--secondary)">
-                    {key.ownerName} is closing their account, so apps using this
-                    key are turned away. It is deleted with the account.
+                    {formatMessage(copy.list.ownerClosing, {
+                      ownerName: key.ownerName,
+                    })}
                   </p>
                 ) : null}
                 {state.revocable ? (
@@ -385,9 +401,9 @@ export function ApiKeysPanel() {
                     {revokingId === key.id ? (
                       <>
                         <span className="text-sm text-(--secondary)">
-                          {state.label === "Stopped"
-                            ? "Revoke this key? It can never be used again."
-                            : "Revoke this key? Apps using it stop working at once."}
+                          {state.status === "stopped"
+                            ? copy.revoke.stoppedConfirm
+                            : copy.revoke.confirm}
                         </span>
                         <button
                           className="btn-quiet btn-quiet-danger"
@@ -395,7 +411,9 @@ export function ApiKeysPanel() {
                           onClick={() => void revokeKey(key)}
                           type="button"
                         >
-                          {pendingId === key.id ? "Revoking..." : "Revoke"}
+                          {pendingId === key.id
+                            ? copy.revoke.revoking
+                            : copy.revoke.label}
                         </button>
                         <button
                           className="btn-quiet"
@@ -403,18 +421,20 @@ export function ApiKeysPanel() {
                           onClick={() => setRevokingId(null)}
                           type="button"
                         >
-                          Cancel
+                          {copy.revoke.cancel}
                         </button>
                       </>
                     ) : (
                       <button
-                        aria-label={`Revoke ${key.name}`}
+                        aria-label={formatMessage(copy.revoke.ariaLabel, {
+                          name: key.name,
+                        })}
                         className="btn-quiet btn-quiet-danger"
                         disabled={pendingId !== null}
                         onClick={() => setRevokingId(key.id)}
                         type="button"
                       >
-                        Revoke
+                        {copy.revoke.label}
                       </button>
                     )}
                   </div>

@@ -11,14 +11,14 @@ import {
   type BackupStore,
   DATABASE_PREFIX,
   findLatestDatabaseBackup,
+  RestoreError,
   restoreDatabase,
   restoreFiles,
-  RestoreError,
   runBackup,
 } from "./backup.ts";
 import { openTestDatabase } from "./db/test-database.ts";
-import { enforceSessionLimits } from "./session-controls.ts";
 import { recordSystemAuditEvent } from "./services/system-audit.ts";
+import { enforceSessionLimits } from "./session-controls.ts";
 import { saveSettings } from "./settings.ts";
 
 // The daily backup and its restore, against a real Postgres and an

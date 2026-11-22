@@ -10,8 +10,8 @@ import type pg from "pg";
 import { openTestDatabase } from "./db/test-database.ts";
 import { listPeople, PeopleError, setPersonRole } from "./people.ts";
 import { runRetentionSweep } from "./retention.ts";
-import { listSystemAuditEvents } from "./services/system-audit.ts";
 import { createStorageService } from "./services/storage.ts";
+import { listSystemAuditEvents } from "./services/system-audit.ts";
 
 // Administrator roles against a real Postgres: there is always at least
 // one, even when two removals arrive at once. Run with `npm run test:db`.
@@ -49,7 +49,10 @@ after(async () => {
 async function createUser({
   role = "user",
   verified = true,
-}: { role?: "admin" | "user"; verified?: boolean } = {}) {
+}: {
+  role?: "admin" | "user";
+  verified?: boolean;
+} = {}) {
   const id = randomUUID();
 
   createdUsers.push(id);

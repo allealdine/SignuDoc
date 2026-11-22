@@ -1,7 +1,6 @@
 import { createHash, createSign, randomBytes } from "node:crypto";
-
-import { SignPdf } from "@signpdf/signpdf";
 import { pdflibAddPlaceholder } from "@signpdf/placeholder-pdf-lib";
+import { SignPdf } from "@signpdf/signpdf";
 import { Signer, SUBFILTER_ETSI_CADES_DETACHED } from "@signpdf/utils";
 import forge from "node-forge";
 import type { PDFDocument } from "pdf-lib";
@@ -395,7 +394,7 @@ export async function saveSealedPdf(
   const signingTime = options.signingTime ?? new Date();
 
   pdflibAddPlaceholder({
-    appName: "SignuDoc",
+    appName: "Sakta",
     contactInfo: options.contactInfo ?? "",
     location: options.location ?? "",
     name: options.name,

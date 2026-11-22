@@ -1,11 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
+import { formatMessage } from "@/lib/i18n/format.ts";
+import type { Messages } from "@/lib/i18n/locales/en.ts";
+import { useMessages } from "@/lib/i18n/messages-provider.tsx";
+import { intlLocales } from "@/lib/i18n/types.ts";
 import type { WebhookEndpoint } from "@/lib/webhooks/endpoints";
 import {
-  webhookEventTypes,
   type WebhookEventType,
+  webhookEventTypes,
 } from "@/lib/webhooks/events";
 import type { WebhookDeliverySummary } from "@/lib/webhooks/log";
 
@@ -13,31 +16,35 @@ import type { WebhookDeliverySummary } from "@/lib/webhooks/log";
 // changed. Administrators only. A signing secret is shown once, right after
 // it is made, and never again.
 
-const GENERIC_ERROR_MESSAGE = "Something went wrong. Please try again.";
 const WEBHOOK_DOCS_URL =
   "https://github.com/NYLLON-SOFTWARE/SignuDoc/blob/main/docs/api.md#webhooks";
 
-const EVENT_LABELS: Record<WebhookEventType, string> = {
-  "envelope.completed": "Completed",
-  "envelope.declined": "Declined",
-  "envelope.expired": "Expired",
-  "envelope.sent": "Sent",
-  "envelope.voided": "Voided",
-  "signer.signed": "Signer signed",
-  "signer.viewed": "Signer opened it",
+type WebhooksCopy = Messages["settings"]["webhooks"];
+
+const WEBHOOK_EVENT_KEYS: Record<
+  WebhookEventType,
+  keyof WebhooksCopy["eventLabels"]
+> = {
+  "envelope.completed": "completed",
+  "envelope.declined": "declined",
+  "envelope.expired": "expired",
+  "envelope.sent": "sent",
+  "envelope.voided": "voided",
+  "signer.signed": "signerSigned",
+  "signer.viewed": "signerViewed",
 };
 
-const timeFormatter = new Intl.DateTimeFormat("en-US", {
-  day: "numeric",
-  hour: "numeric",
-  minute: "2-digit",
-  month: "short",
-});
+function formatTime(seconds: number | null, locale: "en" | "id") {
+  if (seconds === null) {
+    return null;
+  }
 
-function formatTime(seconds: number | null) {
-  return seconds === null
-    ? null
-    : timeFormatter.format(new Date(seconds * 1000));
+  return new Intl.DateTimeFormat(intlLocales[locale], {
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    month: "short",
+  }).format(new Date(seconds * 1000));
 }
 
 type ApiPayload = {
@@ -92,6 +99,7 @@ function DeliveryLog({
   paused: boolean;
   refreshKey: number;
 }) {
+  const copy = useMessages().messages.settings.webhooks;
   const [deliveries, setDeliveries] = useState<WebhookDeliverySummary[] | null>(
     null,
   );
@@ -116,12 +124,12 @@ function DeliveryLog({
             setDeliveries(payload.deliveries);
             setLoadError(null);
           } else {
-            setLoadError(payload?.error ?? GENERIC_ERROR_MESSAGE);
+            setLoadError(payload?.error ?? copy.genericError);
           }
         }
       } catch {
         if (!cancelled) {
-          setLoadError(GENERIC_ERROR_MESSAGE);
+          setLoadError(copy.genericError);
         }
       }
     })();
@@ -147,7 +155,7 @@ function DeliveryLog({
       );
 
       if (!ok) {
-        setActionError(payload?.error ?? GENERIC_ERROR_MESSAGE);
+        setActionError(payload?.error ?? copy.genericError);
         return;
       }
 
@@ -155,7 +163,7 @@ function DeliveryLog({
       await new Promise((resolve) => setTimeout(resolve, 1500));
       setRevision((value) => value + 1);
     } catch {
-      setActionError(GENERIC_ERROR_MESSAGE);
+      setActionError(copy.genericError);
     } finally {
       setPendingId(null);
     }
@@ -168,14 +176,11 @@ function DeliveryLog({
     <div className="grid gap-2">
       <div className="flex justify-end">
         <button className="btn-quiet" onClick={refresh} type="button">
-          Refresh
+          {copy.log.refresh}
         </button>
       </div>
       {paused ? (
-        <p className="text-sm text-(--secondary)">
-          This endpoint is off, so nothing is sent to it. Deliveries that are
-          waiting go out once it is turned on.
-        </p>
+        <p className="text-sm text-(--secondary)">{copy.log.paused}</p>
       ) : null}
       {actionError ? (
         <p className="notice notice-danger" role="alert">
@@ -189,10 +194,10 @@ function DeliveryLog({
       ) : null}
       {deliveries === null ? (
         loadError ? null : (
-          <p className="text-sm text-(--secondary)">Loading...</p>
+          <p className="text-sm text-(--secondary)">{copy.log.loading}</p>
         )
       ) : deliveries.length === 0 ? (
-        <p className="text-sm text-(--secondary)">Nothing sent yet.</p>
+        <p className="text-sm text-(--secondary)">{copy.log.empty}</p>
       ) : (
         <DeliveryList
           canResend={!paused}
@@ -216,8 +221,11 @@ function DeliveryList({
   onResend: (id: string) => void;
   pendingId: string | null;
 }) {
+  const { locale, messages } = useMessages();
+  const copy = messages.settings.webhooks;
+
   return (
-    <ul aria-label="Recent deliveries" className="grid gap-2">
+    <ul aria-label={copy.log.ariaLabel} className="grid gap-2">
       {deliveries.map((delivery) => (
         <li
           className="grid gap-1 rounded-lg border border-(--border) px-3 py-2 text-sm"
@@ -227,28 +235,36 @@ function DeliveryList({
             <span className="font-mono text-(--fg)">{delivery.eventType}</span>
             <span className={`pill ${deliveryTone(delivery.status)}`}>
               {delivery.status === "pending" && delivery.attempts > 0
-                ? "Retrying"
+                ? copy.log.statuses.retrying
                 : delivery.status === "pending"
-                  ? "Waiting"
+                  ? copy.log.statuses.pending
                   : delivery.status === "delivered"
-                    ? "Delivered"
-                    : "Failed"}
+                    ? copy.log.statuses.delivered
+                    : copy.log.statuses.failed}
             </span>
             <span className="text-(--secondary)">
-              {formatTime(delivery.createdAt)}
+              {formatTime(delivery.createdAt, locale)}
               {delivery.attempts > 1
-                ? `, ${String(delivery.attempts)} tries`
+                ? formatMessage(copy.log.attempts, {
+                    count: delivery.attempts,
+                  })
                 : ""}
               {delivery.lastStatusCode !== null
-                ? `, answered ${String(delivery.lastStatusCode)}`
+                ? formatMessage(copy.log.answered, {
+                    status: delivery.lastStatusCode,
+                  })
                 : ""}
             </span>
           </div>
           {delivery.status !== "delivered" && delivery.lastError ? (
             <p className="break-all text-(--secondary)">
-              {delivery.lastError}
+              {formatMessage(copy.log.lastError, {
+                error: delivery.lastError,
+              })}
               {delivery.status === "pending" && delivery.nextAttemptAt
-                ? ` Next try around ${formatTime(delivery.nextAttemptAt) ?? ""}.`
+                ? formatMessage(copy.log.nextTry, {
+                    date: formatTime(delivery.nextAttemptAt, locale) ?? "",
+                  })
                 : ""}
             </p>
           ) : null}
@@ -261,7 +277,7 @@ function DeliveryList({
                 onClick={() => onResend(delivery.id)}
                 type="button"
               >
-                {pendingId === delivery.id ? "Sending..." : "Send again"}
+                {pendingId === delivery.id ? copy.log.sending : copy.log.resend}
               </button>
             </div>
           ) : null}
@@ -272,6 +288,8 @@ function DeliveryList({
 }
 
 export function WebhooksPanel() {
+  const { locale, messages } = useMessages();
+  const copy = messages.settings.webhooks;
   const [endpoints, setEndpoints] = useState<WebhookEndpoint[] | null>(null);
   // A failed read of the list, with its own Try again, kept apart from the
   // error of an action so neither hides the other.
@@ -309,7 +327,7 @@ export function WebhooksPanel() {
         }
 
         if (!ok || !payload?.endpoints) {
-          setListError(payload?.error ?? GENERIC_ERROR_MESSAGE);
+          setListError(payload?.error ?? copy.genericError);
           return;
         }
 
@@ -318,7 +336,7 @@ export function WebhooksPanel() {
         setListError(null);
       } catch {
         if (!cancelled) {
-          setListError(GENERIC_ERROR_MESSAGE);
+          setListError(copy.genericError);
         }
       }
     })();
@@ -397,7 +415,7 @@ export function WebhooksPanel() {
       });
 
       if (!ok || !payload?.secret || !payload.endpoint) {
-        setError(payload?.error ?? GENERIC_ERROR_MESSAGE);
+        setError(payload?.error ?? copy.genericError);
         return;
       }
 
@@ -407,7 +425,7 @@ export function WebhooksPanel() {
       setDescription("");
       setRevision((value) => value + 1);
     } catch {
-      setError(GENERIC_ERROR_MESSAGE);
+      setError(copy.genericError);
     } finally {
       setIsCreating(false);
     }
@@ -443,7 +461,7 @@ export function WebhooksPanel() {
                 });
 
       if (!ok) {
-        setError(payload?.error ?? GENERIC_ERROR_MESSAGE);
+        setError(payload?.error ?? copy.genericError);
         return;
       }
 
@@ -462,15 +480,19 @@ export function WebhooksPanel() {
 
         setNotice(
           delivery.status === "delivered"
-            ? `The test event was delivered (answered ${String(delivery.lastStatusCode)}).`
-            : `The test event was not delivered: ${delivery.lastError ?? "no answer"}.`,
+            ? formatMessage(copy.log.refreshed, {
+                status: delivery.lastStatusCode ?? "",
+              })
+            : formatMessage(copy.log.testFailed, {
+                error: delivery.lastError ?? copy.log.noAnswer,
+              }),
         );
       }
 
       setRemovingId(null);
       setRevision((value) => value + 1);
     } catch {
-      setError(GENERIC_ERROR_MESSAGE);
+      setError(copy.genericError);
     } finally {
       setPendingId(null);
     }
@@ -503,29 +525,26 @@ export function WebhooksPanel() {
     <div className="space-y-5 border-t border-(--border) pt-8">
       <div className="space-y-2">
         <h3 className="text-lg font-extrabold tracking-[-0.02em] text-(--fg)">
-          Webhooks
+          {copy.title}
         </h3>
         <p className="max-w-2xl text-sm leading-6 text-(--secondary)">
-          Tell another app when an envelope is sent, opened, signed, completed,
-          declined, voided or expires. Each event is POSTed to the URL as JSON
-          and signed with the endpoint&apos;s secret, the{" "}
+          {copy.descriptionBefore}{" "}
           <a
             className="font-semibold text-(--accent) underline-offset-4 hover:underline"
             href={WEBHOOK_DOCS_URL}
             rel="noreferrer"
             target="_blank"
           >
-            Standard Webhooks
+            {copy.docsLink}
           </a>{" "}
-          way. Endpoints get events for every envelope on this install. If the
-          app does not answer, the event is tried again for about two days.
+          {copy.descriptionAfter}
         </p>
       </div>
 
       <div className="grid max-w-xl gap-4">
         <label className="grid gap-1.5">
           <span className="text-[0.8125rem] font-semibold text-(--secondary)">
-            URL
+            {copy.fields.urlLabel}
           </span>
           <input
             autoComplete="off"
@@ -535,13 +554,13 @@ export function WebhooksPanel() {
             maxLength={2048}
             name="webhook-url"
             onChange={(event) => setUrl(event.target.value)}
-            placeholder="https://app.example.com/webhooks/signudoc"
+            placeholder={copy.fields.urlPlaceholder}
             value={url}
           />
         </label>
         <label className="grid gap-1.5">
           <span className="text-[0.8125rem] font-semibold text-(--secondary)">
-            Description (optional)
+            {copy.fields.descriptionLabel}
           </span>
           <input
             autoComplete="off"
@@ -550,13 +569,13 @@ export function WebhooksPanel() {
             maxLength={200}
             name="webhook-description"
             onChange={(event) => setDescription(event.target.value)}
-            placeholder="What this endpoint is for"
+            placeholder={copy.fields.descriptionPlaceholder}
             value={description}
           />
         </label>
         <fieldset className="grid gap-2">
           <legend className="mb-1.5 text-[0.8125rem] font-semibold text-(--secondary)">
-            Events
+            {copy.events.legend}
           </legend>
           <div className="grid gap-2 sm:grid-cols-2">
             {webhookEventTypes.map((type) => (
@@ -571,7 +590,7 @@ export function WebhooksPanel() {
                   onChange={() => toggleEvent(type)}
                   type="checkbox"
                 />
-                {EVENT_LABELS[type]}
+                {copy.eventLabels[WEBHOOK_EVENT_KEYS[type]]}
               </label>
             ))}
           </div>
@@ -589,7 +608,7 @@ export function WebhooksPanel() {
             onClick={() => void createEndpoint()}
             type="button"
           >
-            {isCreating ? "Adding..." : "Add endpoint"}
+            {isCreating ? copy.adding : copy.add}
           </button>
         </div>
       </div>
@@ -601,9 +620,7 @@ export function WebhooksPanel() {
           role="status"
         >
           <p className="text-sm font-semibold text-(--fg)">
-            Copy the signing secret for {newSecret.url} now. It is not shown
-            again. Press Done once it is copied, before adding another endpoint
-            or making another secret.
+            {formatMessage(copy.newSecretNotice, { url: newSecret.url })}
           </p>
           <code className="block overflow-x-auto rounded-lg border border-(--border) bg-(--paper) px-3 py-2 font-mono text-sm break-all text-(--fg)">
             {newSecret.secret}
@@ -614,14 +631,14 @@ export function WebhooksPanel() {
               onClick={() => void copySecret()}
               type="button"
             >
-              {copied ? "Copied" : "Copy"}
+              {copied ? copy.copied : copy.copy}
             </button>
             <button
               className="btn-quiet"
               onClick={() => setNewSecret(null)}
               type="button"
             >
-              Done
+              {copy.done}
             </button>
           </div>
         </div>
@@ -651,16 +668,16 @@ export function WebhooksPanel() {
               }}
               type="button"
             >
-              Try again
+              {copy.retry}
             </button>
           </div>
         </div>
       ) : null}
 
       {endpoints === null ? null : endpoints.length === 0 ? (
-        <p className="text-sm text-(--secondary)">No endpoints yet.</p>
+        <p className="text-sm text-(--secondary)">{copy.empty}</p>
       ) : (
-        <ul aria-label="Webhook endpoints" className="grid max-w-2xl gap-3">
+        <ul aria-label={copy.listAriaLabel} className="grid max-w-2xl gap-3">
           {endpoints.map((endpoint) => (
             <li className="well grid gap-2 p-4" key={endpoint.id}>
               <div className="flex flex-wrap items-center gap-2">
@@ -670,7 +687,7 @@ export function WebhooksPanel() {
                 <span
                   className={`pill ${endpoint.enabled ? "pill-success" : "pill-neutral"}`}
                 >
-                  {endpoint.enabled ? "On" : "Off"}
+                  {endpoint.enabled ? copy.on : copy.off}
                 </span>
               </div>
               {endpoint.description ? (
@@ -680,18 +697,28 @@ export function WebhooksPanel() {
               ) : null}
               <p className="text-sm text-(--secondary)">
                 {endpoint.events.length === webhookEventTypes.length
-                  ? "All events."
-                  : `${endpoint.events.map((type) => EVENT_LABELS[type]).join(", ")}.`}
+                  ? copy.status.allEvents
+                  : formatMessage(copy.status.events, {
+                      events: endpoint.events
+                        .map(
+                          (type) => copy.eventLabels[WEBHOOK_EVENT_KEYS[type]],
+                        )
+                        .join(", "),
+                    })}
                 {endpoint.previousSecretExpiresAt &&
                 endpoint.previousSecretExpiresAt > now
-                  ? ` The old secret also signs until ${formatTime(endpoint.previousSecretExpiresAt) ?? ""}, and another new secret can be made after that.`
+                  ? formatMessage(copy.secretTransition, {
+                      date:
+                        formatTime(endpoint.previousSecretExpiresAt, locale) ??
+                        "",
+                    })
                   : ""}
               </p>
               <div className="flex flex-wrap items-center gap-2">
                 {removingId === endpoint.id ? (
                   <>
                     <span className="text-sm text-(--secondary)">
-                      Remove this endpoint and its delivery log?
+                      {copy.removeConfirm}
                     </span>
                     <button
                       className="btn-quiet btn-quiet-danger"
@@ -699,7 +726,7 @@ export function WebhooksPanel() {
                       onClick={() => void act(endpoint, "delete")}
                       type="button"
                     >
-                      {pendingId === endpoint.id ? "Removing..." : "Remove"}
+                      {pendingId === endpoint.id ? copy.removing : copy.remove}
                     </button>
                     <button
                       className="btn-quiet"
@@ -707,7 +734,7 @@ export function WebhooksPanel() {
                       onClick={() => setRemovingId(null)}
                       type="button"
                     >
-                      Cancel
+                      {copy.cancel}
                     </button>
                   </>
                 ) : (
@@ -718,7 +745,9 @@ export function WebhooksPanel() {
                       onClick={() => void act(endpoint, "test")}
                       type="button"
                     >
-                      {pendingId === endpoint.id ? "Working..." : "Send test"}
+                      {pendingId === endpoint.id
+                        ? copy.test.working
+                        : copy.test.send}
                     </button>
                     <button
                       className="btn-quiet"
@@ -731,7 +760,7 @@ export function WebhooksPanel() {
                       }
                       type="button"
                     >
-                      {endpoint.enabled ? "Turn off" : "Turn on"}
+                      {endpoint.enabled ? copy.toggle.off : copy.toggle.on}
                     </button>
                     <button
                       className="btn-quiet"
@@ -745,7 +774,7 @@ export function WebhooksPanel() {
                       onClick={() => void act(endpoint, "rotate")}
                       type="button"
                     >
-                      New secret
+                      {copy.rotate}
                     </button>
                     <button
                       aria-expanded={openLogId === endpoint.id}
@@ -757,16 +786,20 @@ export function WebhooksPanel() {
                       }
                       type="button"
                     >
-                      {openLogId === endpoint.id ? "Hide log" : "Delivery log"}
+                      {openLogId === endpoint.id
+                        ? copy.log.hide
+                        : copy.log.title}
                     </button>
                     <button
-                      aria-label={`Remove ${endpoint.url}`}
+                      aria-label={formatMessage(copy.removeAriaLabel, {
+                        url: endpoint.url,
+                      })}
                       className="btn-quiet btn-quiet-danger"
                       disabled={pendingId !== null}
                       onClick={() => setRemovingId(endpoint.id)}
                       type="button"
                     >
-                      Remove
+                      {copy.remove}
                     </button>
                   </>
                 )}

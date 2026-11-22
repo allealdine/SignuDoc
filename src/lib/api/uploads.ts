@@ -1,9 +1,9 @@
 import { randomUUID } from "node:crypto";
 
 import {
+  type IssuedSignedToken,
   issueSignedToken,
   presignUrl,
-  type IssuedSignedToken,
 } from "@vercel/blob";
 
 import {

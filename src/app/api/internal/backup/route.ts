@@ -6,9 +6,9 @@ import {
   readBackupSettings,
   runBackup,
 } from "@/lib/backup";
-import { consumeRateLimit } from "@/lib/security/rate-limit";
 import { identifyRetentionCaller } from "@/lib/retention-job";
 import { logRouteError, logSecurityEvent } from "@/lib/security/logging";
+import { consumeRateLimit } from "@/lib/security/rate-limit";
 import { getClientIpAddress, getRequestPathname } from "@/lib/security/request";
 import { resolveStorageDriver } from "@/lib/services/storage/driver";
 

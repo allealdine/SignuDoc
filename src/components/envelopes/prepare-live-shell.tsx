@@ -5,44 +5,26 @@ import {
   CaseSensitiveIcon,
   CircleDotIcon,
   HashIcon,
+  type LucideIcon,
   SignatureIcon,
   SquareCheckIcon,
   SquareChevronDownIcon,
   TypeIcon,
   UserRoundIcon,
-  type LucideIcon,
 } from "lucide-react";
 import {
+  type Dispatch,
+  type MouseEvent,
+  type MutableRefObject,
+  type PointerEvent as ReactPointerEvent,
+  type RefObject,
+  type SetStateAction,
   useEffect,
   useId,
   useRef,
   useState,
-  type Dispatch,
-  type PointerEvent as ReactPointerEvent,
-  type MutableRefObject,
-  type RefObject,
-  type MouseEvent,
-  type SetStateAction,
 } from "react";
-
-import { type PrepareEnvelopeData } from "@/lib/envelopes";
-import {
-  describeChoiceFieldProblem,
-  findChoiceFieldProblem,
-  labelTextToShow,
-  MAX_FIELD_OPTIONS,
-  MAX_FIELD_OPTION_LENGTH,
-  MAX_RADIO_GROUP_BUTTONS,
-  optionsTextToShow,
-  parseOptionLines,
-} from "@/lib/field-choices";
-import { getInitials } from "@/lib/initials";
-import {
-  type FieldPlacement,
-  type ReplaceFieldsResponse,
-} from "@/lib/schemas/field";
 import { CanvasShell } from "@/components/layout/canvas-shell";
-import { Button } from "@/components/ui/button";
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -51,18 +33,37 @@ import {
   beginDocumentPanGesture,
   clampDocumentZoomLevel,
   DEFAULT_DOCUMENT_ZOOM_LEVEL,
+  DOCUMENT_ZOOM_STEP,
+  type DocumentPanGesture,
   DocumentZoomControls,
   endDocumentPanGesture,
   moveDocumentPanGesture,
-  type DocumentPanGesture,
-  DOCUMENT_ZOOM_STEP,
 } from "@/components/shared/document-viewport";
+import { Button } from "@/components/ui/button";
 import { getCachedDraftPdfBlob } from "@/lib/draft-pdf-cache";
+import type { PrepareEnvelopeData } from "@/lib/envelopes";
 import {
+  findChoiceFieldProblem,
+  labelTextToShow,
+  MAX_FIELD_OPTION_LENGTH,
+  MAX_FIELD_OPTIONS,
+  MAX_RADIO_GROUP_BUTTONS,
+  optionsTextToShow,
+  parseOptionLines,
+} from "@/lib/field-choices";
+import { formatMessage } from "@/lib/i18n/format.ts";
+import type { Messages } from "@/lib/i18n/locales/en.ts";
+import { useMessages } from "@/lib/i18n/messages-provider.tsx";
+import { getInitials } from "@/lib/initials";
+import type {
+  FieldPlacement,
+  ReplaceFieldsResponse,
+} from "@/lib/schemas/field";
+import {
+  type FieldResizeHandle,
   moveFieldRect,
   placeFieldAtViewportPoint,
   resizeFieldRectFromHandle,
-  type FieldResizeHandle,
 } from "@/lib/utils/pdf-coords";
 import { InteractivePlacedField } from "./interactive-placed-field";
 import { PdfPageCanvas } from "./pdf-page-canvas";
@@ -146,89 +147,93 @@ type PersistFieldsResult = {
   ok: boolean;
   redirectPath: string | null;
 };
-const fieldTools: readonly FieldTool[] = [
-  {
-    defaultHeight: 0.07,
-    defaultWidth: 0.24,
-    label: "Signature",
-    minHeight: 0.0045,
-    minWidth: 0.006,
-    placeholderLabel: "Sign",
-    type: "signature",
-  },
-  {
-    defaultHeight: 0.055,
-    defaultWidth: 0.14,
-    label: "Initials",
-    minHeight: 0.0045,
-    minWidth: 0.006,
-    placeholderLabel: "Initials",
-    type: "initials",
-  },
-  {
-    defaultHeight: 0.045,
-    defaultWidth: 0.12,
-    label: "Date",
-    minHeight: 0.0045,
-    minWidth: 0.006,
-    placeholderLabel: "Date",
-    type: "date",
-  },
-  {
-    defaultHeight: 0.045,
-    defaultWidth: 0.2,
-    label: "Name",
-    minHeight: 0.0045,
-    minWidth: 0.006,
-    placeholderLabel: "Name",
-    type: "name",
-  },
-  {
-    defaultHeight: 0.055,
-    defaultWidth: 0.18,
-    label: "Text",
-    minHeight: 0.0045,
-    minWidth: 0.006,
-    placeholderLabel: "Text",
-    type: "text",
-  },
-  {
-    defaultHeight: 0.023,
-    defaultWidth: 0.03,
-    label: "Checkbox",
-    minHeight: 0.0045,
-    minWidth: 0.006,
-    placeholderLabel: "Checkbox",
-    type: "checkbox",
-  },
-  {
-    defaultHeight: 0.045,
-    defaultWidth: 0.16,
-    label: "Number",
-    minHeight: 0.0045,
-    minWidth: 0.006,
-    placeholderLabel: "Number",
-    type: "number",
-  },
-  {
-    defaultHeight: 0.045,
-    defaultWidth: 0.22,
-    label: "Dropdown",
-    minHeight: 0.0045,
-    minWidth: 0.006,
-    placeholderLabel: "Dropdown",
-    type: "dropdown",
-  },
-  {
-    defaultHeight: 0.023,
-    defaultWidth: 0.03,
-    label: "Radio button",
-    minHeight: 0.0045,
-    minWidth: 0.006,
-    placeholderLabel: "Radio button",
-    type: "radio",
-  },
-] as const;
+type PrepareCopy = Messages["envelope"]["prepare"];
+
+function buildFieldTools(copy: PrepareCopy): readonly FieldTool[] {
+  return [
+    {
+      defaultHeight: 0.07,
+      defaultWidth: 0.24,
+      label: copy.fieldTools.signature.label,
+      minHeight: 0.0045,
+      minWidth: 0.006,
+      placeholderLabel: copy.fieldTools.signature.placeholderLabel,
+      type: "signature",
+    },
+    {
+      defaultHeight: 0.055,
+      defaultWidth: 0.14,
+      label: copy.fieldTools.initials.label,
+      minHeight: 0.0045,
+      minWidth: 0.006,
+      placeholderLabel: copy.fieldTools.initials.placeholderLabel,
+      type: "initials",
+    },
+    {
+      defaultHeight: 0.045,
+      defaultWidth: 0.12,
+      label: copy.fieldTools.date.label,
+      minHeight: 0.0045,
+      minWidth: 0.006,
+      placeholderLabel: copy.fieldTools.date.placeholderLabel,
+      type: "date",
+    },
+    {
+      defaultHeight: 0.045,
+      defaultWidth: 0.2,
+      label: copy.fieldTools.name.label,
+      minHeight: 0.0045,
+      minWidth: 0.006,
+      placeholderLabel: copy.fieldTools.name.placeholderLabel,
+      type: "name",
+    },
+    {
+      defaultHeight: 0.055,
+      defaultWidth: 0.18,
+      label: copy.fieldTools.text.label,
+      minHeight: 0.0045,
+      minWidth: 0.006,
+      placeholderLabel: copy.fieldTools.text.placeholderLabel,
+      type: "text",
+    },
+    {
+      defaultHeight: 0.023,
+      defaultWidth: 0.03,
+      label: copy.fieldTools.checkbox.label,
+      minHeight: 0.0045,
+      minWidth: 0.006,
+      placeholderLabel: copy.fieldTools.checkbox.placeholderLabel,
+      type: "checkbox",
+    },
+    {
+      defaultHeight: 0.045,
+      defaultWidth: 0.16,
+      label: copy.fieldTools.number.label,
+      minHeight: 0.0045,
+      minWidth: 0.006,
+      placeholderLabel: copy.fieldTools.number.placeholderLabel,
+      type: "number",
+    },
+    {
+      defaultHeight: 0.045,
+      defaultWidth: 0.22,
+      label: copy.fieldTools.dropdown.label,
+      minHeight: 0.0045,
+      minWidth: 0.006,
+      placeholderLabel: copy.fieldTools.dropdown.placeholderLabel,
+      type: "dropdown",
+    },
+    {
+      defaultHeight: 0.023,
+      defaultWidth: 0.03,
+      label: copy.fieldTools.radio.label,
+      minHeight: 0.0045,
+      minWidth: 0.006,
+      placeholderLabel: copy.fieldTools.radio.placeholderLabel,
+      type: "radio",
+    },
+  ];
+}
 
 // Fields the sender may leave optional. A signature, initials, the date and
 // the name are always needed.
@@ -262,7 +267,6 @@ function newLocalId() {
     : `local-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-const genericSubmitError = "Something went wrong. Please try again.";
 const autosaveDelayMs = 450;
 
 function buildLiveSigners(
@@ -299,8 +303,10 @@ function buildLiveFields(
   }));
 }
 
-function getFieldTool(type: PrepareFieldType) {
-  return fieldTools.find((tool) => tool.type === type) ?? fieldTools[0];
+function getFieldTool(type: PrepareFieldType, copy: PrepareCopy) {
+  const tools = buildFieldTools(copy);
+
+  return tools.find((tool) => tool.type === type) ?? tools[0];
 }
 
 function roundNormalized(value: number) {
@@ -365,9 +371,12 @@ function serializeFieldRequest(fields: readonly PrepareField[]) {
 
 async function parseJsonResponse<T>(
   response: Response,
+  copy: PrepareCopy,
 ): Promise<{ data: T | null; error: string | null }> {
   const payload = (await response.json().catch(() => null)) as
-    { error?: string } | T | null;
+    | { error?: string }
+    | T
+    | null;
 
   if (!response.ok) {
     return {
@@ -378,7 +387,7 @@ async function parseJsonResponse<T>(
         "error" in payload &&
         typeof payload.error === "string"
           ? payload.error
-          : genericSubmitError,
+          : copy.error.generic,
     };
   }
 
@@ -401,14 +410,16 @@ export function PrepareLiveShell({
 }
 
 function PrepareLiveShellError({ envelopeId }: { envelopeId: string }) {
+  const copy = useMessages().messages.envelope.prepare;
+
   return (
     <CanvasShell
       backHref={`/envelopes/${envelopeId}/signers`}
-      backLabel="Back"
+      backLabel={copy.actions.back}
       nextDisabled
-      nextLabel="Next →"
-      stepLabel="Step 3 of 4"
-      title='"Document"'
+      nextLabel={copy.actions.next}
+      stepLabel={copy.step}
+      title={copy.title}
     >
       <div className="flex min-h-[calc(100vh-73px)] items-center justify-center p-4 sm:p-6 lg:p-8">
         <section className="panel w-full max-w-[520px] p-8 text-center sm:p-10">
@@ -416,17 +427,17 @@ function PrepareLiveShellError({ envelopeId }: { envelopeId: string }) {
             !
           </div>
           <h1 className="mt-5 text-2xl font-extrabold tracking-[-0.03em] text-(--fg)">
-            Couldn&apos;t load this document
+            {copy.error.loadTitle}
           </h1>
           <p className="mt-2 text-sm leading-6 text-(--secondary)">
-            Something went wrong. Please try again.
+            {copy.error.loadDescription}
           </p>
           <Button
             className="mt-7"
             onClick={() => window.location.reload()}
             type="button"
           >
-            Retry
+            {copy.actions.retry}
           </Button>
         </section>
       </div>
@@ -441,6 +452,7 @@ function PrepareLiveShellContent({
   envelopeId: string;
   record: PrepareEnvelopeData;
 }) {
+  const copy = useMessages().messages.envelope.prepare;
   const signers = buildLiveSigners(record.signers);
   const initialFields = buildLiveFields(record.fields);
   const [activePage, setActivePage] = useState(1);
@@ -506,11 +518,15 @@ function PrepareLiveShellContent({
   // A dropdown without choices, or a radio button on its own, can be saved
   // in a draft but not sent.
   const choiceProblem = findChoiceFieldProblem(fields);
+  const choiceProblemSigner =
+    signers.find((signer) => signer.id === choiceProblem?.signerId)?.name ??
+    copy.fallbackSignerName;
   const choiceProblemMessage = choiceProblem
-    ? describeChoiceFieldProblem(
-        choiceProblem,
-        signers.find((signer) => signer.id === choiceProblem.signerId)?.name ??
-          "a signer",
+    ? formatMessage(
+        choiceProblem.kind === "dropdown_options"
+          ? copy.choiceProblems.dropdown_options
+          : copy.choiceProblems.radio_group_size,
+        { signer: choiceProblemSigner },
       )
     : null;
   const canContinue = missingSignatureSigner == null && choiceProblem == null;
@@ -520,7 +536,7 @@ function PrepareLiveShellContent({
   const fieldEditorActions = selectedField
     ? {
         onAddRadioButton: () =>
-          addRadioButton(selectedField.id, setFields, setSelectedFieldId),
+          addRadioButton(selectedField.id, copy, setFields, setSelectedFieldId),
         onDelete: () =>
           deleteField(selectedField.id, setFields, setSelectedFieldId),
         onSetLabel: (label: string | undefined) =>
@@ -720,7 +736,10 @@ function PrepareLiveShellContent({
       },
       method: "PUT",
     });
-    const payload = await parseJsonResponse<ReplaceFieldsResponse>(response);
+    const payload = await parseJsonResponse<ReplaceFieldsResponse>(
+      response,
+      copy,
+    );
 
     if (payload.error) {
       setSaveError(payload.error);
@@ -862,7 +881,7 @@ function PrepareLiveShellContent({
         window.location.assign(backHref);
       }
     } catch {
-      setSaveError("Your changes could not be saved. Try again.");
+      setSaveError(copy.error.saveNetwork);
       setSaveState("error");
     } finally {
       setIsLeaving(false);
@@ -905,22 +924,22 @@ function PrepareLiveShellContent({
   return (
     <CanvasShell
       backHref={backHref}
-      backLabel="Back"
+      backLabel={copy.actions.back}
       nextDisabled={!canContinue}
-      nextLabel="Next →"
+      nextLabel={copy.actions.next}
       nextLoading={isContinuing}
       onBack={(event) => void handleBack(event)}
       onNext={handleContinue}
-      stepLabel="Step 3 of 4"
+      stepLabel={copy.step}
       title={`"${record.title}"`}
     >
       <div className="grid min-h-[calc(100vh-73px)] lg:grid-cols-[272px_minmax(0,1fr)_304px]">
         <aside className="hidden lg:block">
           <div className="sticky top-[4.5rem] flex max-h-[calc(100vh-4.5rem)] flex-col gap-4 overflow-y-auto py-5 pl-5">
             <section className="panel space-y-3 rounded-[1.25rem] p-4">
-              <p className="section-eyebrow px-1">Fields</p>
+              <p className="section-eyebrow px-1">{copy.fields.title}</p>
               <div className="grid gap-2">
-                {fieldTools.map((tool) => (
+                {buildFieldTools(copy).map((tool) => (
                   <FieldToolButton
                     isActive={armedTool === tool.type}
                     key={tool.type}
@@ -940,11 +959,13 @@ function PrepareLiveShellContent({
 
             <section className="panel space-y-3 rounded-[1.25rem] p-4">
               <div className="flex items-center justify-between px-1">
-                <p className="section-eyebrow">Signers</p>
+                <p className="section-eyebrow">{copy.signers.title}</p>
                 <span className="text-xs font-medium text-(--tertiary)">
                   {fields.length === 1
-                    ? "1 field placed"
-                    : `${String(fields.length)} fields placed`}
+                    ? copy.fields.placedOne
+                    : formatMessage(copy.fields.placedMany, {
+                        count: fields.length,
+                      })}
                 </span>
               </div>
               <div className="space-y-2">
@@ -993,7 +1014,7 @@ function PrepareLiveShellContent({
 
               <div className="flex items-center justify-center gap-3">
                 <button
-                  aria-label="Previous page"
+                  aria-label={copy.page.ariaPrevious}
                   className="btn-quiet size-10 px-0"
                   disabled={activePage === 1}
                   onClick={() =>
@@ -1010,13 +1031,16 @@ function PrepareLiveShellContent({
                   <ChevronLeftIcon className="size-4" />
                 </button>
                 <div className="min-w-[7.5rem] text-center">
-                  <p className="sr-only">Document page</p>
+                  <p className="sr-only">{copy.page.ariaDocument}</p>
                   <p className="text-sm font-bold text-(--fg)">
-                    {`Page ${activePage} of ${pageCount}`}
+                    {formatMessage(copy.page.label, {
+                      count: pageCount,
+                      page: activePage,
+                    })}
                   </p>
                 </div>
                 <button
-                  aria-label="Next page"
+                  aria-label={copy.page.ariaNext}
                   className="btn-quiet size-10 px-0"
                   disabled={activePage === pageCount}
                   onClick={() =>
@@ -1050,10 +1074,10 @@ function PrepareLiveShellContent({
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <label className="grid flex-1 gap-1.5">
                 <span className="text-[0.8125rem] font-semibold text-(--secondary)">
-                  Selected signer
+                  {copy.signerPanel.title}
                 </span>
                 <select
-                  aria-label="Selected signer"
+                  aria-label={copy.signerPanel.title}
                   className="field-input"
                   onChange={(event) => setSelectedSignerId(event.target.value)}
                   value={selectedSignerId}
@@ -1072,7 +1096,7 @@ function PrepareLiveShellContent({
                 type="button"
                 variant="secondary"
               >
-                Open field tools
+                {copy.actions.openFieldTools}
               </Button>
             </div>
           </div>
@@ -1130,13 +1154,17 @@ function PrepareLiveShellContent({
 
                     {armedTool ? (
                       <button
-                        aria-label={`Place ${getFieldTool(armedTool).label} on page ${activePage}`}
+                        aria-label={formatMessage(copy.placement.ariaPlace, {
+                          field: getFieldTool(armedTool, copy).label,
+                          page: activePage,
+                        })}
                         className="absolute inset-0 z-10 cursor-copy bg-transparent"
                         onClick={(event) =>
                           placeField(
                             event,
                             activePage,
                             armedTool,
+                            copy,
                             fieldCounterRef,
                             selectedSignerId,
                             setArmedTool,
@@ -1147,8 +1175,9 @@ function PrepareLiveShellContent({
                         type="button"
                       >
                         <span className="sr-only">
-                          Place {getFieldTool(armedTool).label} on the document
-                          page
+                          {formatMessage(copy.placement.srPlace, {
+                            field: getFieldTool(armedTool, copy).label,
+                          })}
                         </span>
                       </button>
                     ) : null}
@@ -1157,11 +1186,10 @@ function PrepareLiveShellContent({
                       <div className="absolute inset-0 z-1 flex items-center justify-center px-6">
                         <div className="max-w-[300px] rounded-[1.25rem] border-2 border-dashed border-(--border-strong) bg-white/92 px-6 py-7 text-center">
                           <p className="text-lg font-extrabold tracking-[-0.02em] text-(--fg)">
-                            No fields placed yet
+                            {copy.fields.emptyTitle}
                           </p>
                           <p className="mt-2 text-sm leading-6 text-(--secondary)">
-                            Pick a field, then click the page to place it for
-                            the selected signer.
+                            {copy.fields.emptyDescription}
                           </p>
                         </div>
                       </div>
@@ -1180,8 +1208,10 @@ function PrepareLiveShellContent({
                           key={field.id}
                           label={
                             field.type === "radio" && field.label
-                              ? `Radio button: ${field.label}`
-                              : getFieldTool(field.type).placeholderLabel
+                              ? formatMessage(copy.placedRadioLabel, {
+                                  label: field.label,
+                                })
+                              : getFieldTool(field.type, copy).placeholderLabel
                           }
                           onInteractionChange={setIsFieldInteracting}
                           onMove={(deltaX, deltaY) =>
@@ -1193,6 +1223,7 @@ function PrepareLiveShellContent({
                               corner,
                               deltaX,
                               deltaY,
+                              copy,
                               setFields,
                             )
                           }
@@ -1209,14 +1240,14 @@ function PrepareLiveShellContent({
                     {armedTool ? (
                       <div className="pointer-events-none absolute inset-x-4 bottom-4 z-11 rounded-2xl bg-white/95 px-4 py-3 shadow-(--shadow-lift) ring-1 ring-[rgb(var(--accent-rgb)/0.18)] sm:inset-x-6 sm:bottom-6">
                         <p className="text-[0.8125rem] font-bold text-(--accent-ink)">
-                          Ready to place
+                          {copy.placement.ready}
                         </p>
                         <p className="mt-1 text-sm text-(--secondary)">
-                          Click the page to place{" "}
+                          {copy.placement.clickPrefix}{" "}
                           <span className="font-semibold text-(--fg)">
-                            {getFieldTool(armedTool).label}
+                            {getFieldTool(armedTool, copy).label}
                           </span>{" "}
-                          for{" "}
+                          {copy.placement.clickFor}{" "}
                           <span className="font-semibold text-(--fg)">
                             {selectedSigner.name}
                           </span>
@@ -1253,7 +1284,7 @@ function PrepareLiveShellContent({
         <aside className="hidden lg:block">
           <div className="sticky top-[4.5rem] flex max-h-[calc(100vh-4.5rem)] flex-col gap-4 overflow-y-auto py-5 pr-5">
             <section className="panel space-y-3 rounded-[1.25rem] p-4">
-              <p className="section-eyebrow px-1">Inspector</p>
+              <p className="section-eyebrow px-1">{copy.inspector.title}</p>
               <div>
                 {selectedField && fieldEditorActions ? (
                   <FieldEditor
@@ -1331,6 +1362,7 @@ function MobileFieldToolsSheet({
   onSelectTool,
   returnFocusRef,
 }: MobileFieldToolsSheetProps) {
+  const copy = useMessages().messages.envelope.prepare;
   const sheetRef = useRef<HTMLDivElement>(null);
   const doneRef = useRef<HTMLButtonElement>(null);
   const onCloseRef = useRef(onClose);
@@ -1403,14 +1435,14 @@ function MobileFieldToolsSheet({
   return (
     <div className="fixed inset-0 z-40 lg:hidden">
       <button
-        aria-label="Close field tools"
+        aria-label={copy.actions.closeFieldTools}
         className="absolute inset-0 bg-[rgba(28,29,43,0.32)]"
         onClick={onClose}
         tabIndex={-1}
         type="button"
       />
       <div
-        aria-label="Field tools"
+        aria-label={copy.toolSheet.ariaLabel}
         aria-modal="true"
         className="absolute inset-x-0 bottom-0 flex max-h-[calc(100dvh-1rem)] flex-col rounded-t-[1.75rem] bg-white pt-5 shadow-[0_-24px_60px_rgba(28,29,43,0.18)]"
         ref={sheetRef}
@@ -1419,20 +1451,20 @@ function MobileFieldToolsSheet({
         <div className="shrink-0 px-4 pb-4">
           <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-(--surface-strong)" />
           <div className="flex items-center justify-between">
-            <p className="section-eyebrow">Fields</p>
+            <p className="section-eyebrow">{copy.toolSheet.title}</p>
             <button
               className="min-h-11 px-2 text-sm font-bold text-(--accent-ink)"
               onClick={onClose}
               ref={doneRef}
               type="button"
             >
-              Done
+              {copy.actions.done}
             </button>
           </div>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
           <div className="grid gap-2 sm:grid-cols-2">
-            {fieldTools.map((tool) => (
+            {buildFieldTools(copy).map((tool) => (
               <FieldToolButton
                 isActive={armedTool === tool.type}
                 key={`mobile-${tool.type}`}
@@ -1448,6 +1480,7 @@ function MobileFieldToolsSheet({
 }
 
 function FieldToolButton({ isActive, onSelect, tool }: FieldToolButtonProps) {
+  const copy = useMessages().messages.envelope.prepare;
   const Icon = fieldToolIcons[tool.type];
 
   return (
@@ -1476,7 +1509,7 @@ function FieldToolButton({ isActive, onSelect, tool }: FieldToolButtonProps) {
           isActive ? "text-white/85" : "text-(--tertiary)"
         }`}
       >
-        {isActive ? "Placing" : "Place"}
+        {isActive ? copy.actions.placing : copy.actions.place}
       </span>
     </button>
   );
@@ -1489,6 +1522,8 @@ function SignerCard({
   onSelect,
   signer,
 }: SignerCardProps) {
+  const copy = useMessages().messages.envelope.prepare;
+
   return (
     <button
       aria-pressed={isActive}
@@ -1515,14 +1550,18 @@ function SignerCard({
             {signer.name}
           </p>
           <p className="mt-0.5 text-xs text-(--secondary)">
-            {fieldCount} field{fieldCount === 1 ? "" : "s"} placed
+            {fieldCount === 1
+              ? copy.signers.fieldsOne
+              : formatMessage(copy.signers.fieldsMany, { count: fieldCount })}
           </p>
           <p
             className={`mt-1.5 text-xs font-bold ${
               hasSignatureField ? "text-(--success)" : "text-(--danger)"
             }`}
           >
-            {hasSignatureField ? "Signature ready" : "Signature needed"}
+            {hasSignatureField
+              ? copy.signers.signatureReady
+              : copy.signers.signatureNeeded}
           </p>
         </div>
       </div>
@@ -1537,19 +1576,23 @@ function EmptyFieldInspector({
   armedTool: PrepareFieldType | null;
   selectedSigner: PrepareShellSigner;
 }) {
-  const activeTool = armedTool ? getFieldTool(armedTool) : null;
+  const copy = useMessages().messages.envelope.prepare;
+  const activeTool = armedTool ? getFieldTool(armedTool, copy) : null;
 
   return (
     <div className="well px-4 py-4">
       <p className="text-sm font-bold text-(--fg)">
         {activeTool
-          ? `${activeTool.label} ready to place`
-          : "No field selected"}
+          ? formatMessage(copy.inspector.toolReady, { field: activeTool.label })
+          : copy.inspector.noField}
       </p>
       <p className="mt-1.5 text-sm leading-6 text-(--secondary)">
         {activeTool
-          ? `Click the document to place ${activeTool.label.toLowerCase()} for ${selectedSigner.name}.`
-          : "Select a field on the page to edit its settings, or choose a field tool on the left to place a new one."}
+          ? formatMessage(copy.inspector.placeHint, {
+              field: activeTool.label.toLowerCase(),
+              signer: selectedSigner.name,
+            })
+          : copy.inspector.emptyHint}
       </p>
     </div>
   );
@@ -1562,11 +1605,12 @@ function SelectedSignerPanel({
   armedTool: PrepareFieldType | null;
   selectedSigner: PrepareShellSigner;
 }) {
-  const activeTool = armedTool ? getFieldTool(armedTool) : null;
+  const copy = useMessages().messages.envelope.prepare;
+  const activeTool = armedTool ? getFieldTool(armedTool, copy) : null;
 
   return (
     <section className="panel space-y-3 rounded-[1.25rem] p-4">
-      <p className="section-eyebrow px-1">Selected signer</p>
+      <p className="section-eyebrow px-1">{copy.signerPanel.title}</p>
       <div className="flex items-center gap-3 px-1">
         <span
           className="inline-flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-bold"
@@ -1583,8 +1627,10 @@ function SelectedSignerPanel({
           </p>
           <p className="mt-0.5 text-[0.8125rem] text-(--secondary)">
             {activeTool
-              ? `Placing ${activeTool.label.toLowerCase()}`
-              : "New fields will be assigned here"}
+              ? formatMessage(copy.signerPanel.placing, {
+                  field: activeTool.label.toLowerCase(),
+                })
+              : copy.signerPanel.newFieldsHere}
           </p>
         </div>
       </div>
@@ -1601,6 +1647,7 @@ function SaveStatusIndicator({
   saveError: string | null;
   saveState: SaveState;
 }) {
+  const copy = useMessages().messages.envelope.prepare;
   const isError = saveState === "error" && saveError;
   const isSaving = saveState === "saving";
 
@@ -1645,7 +1692,11 @@ function SaveStatusIndicator({
       </span>
       <div className="min-w-0">
         <p className="font-bold text-(--fg)">
-          {isError ? "Save failed" : isSaving ? "Saving..." : "Saved"}
+          {isError
+            ? copy.save.failed
+            : isSaving
+              ? copy.save.saving
+              : copy.save.saved}
         </p>
         {saveError ? (
           <p className="truncate text-xs text-(--danger)">{saveError}</p>
@@ -1657,7 +1708,7 @@ function SaveStatusIndicator({
           onClick={onRetrySave}
           type="button"
         >
-          Retry
+          {copy.actions.retry}
         </button>
       ) : null}
     </div>
@@ -1675,7 +1726,8 @@ function FieldEditor({
   onSignerChange,
   signers,
 }: FieldEditorProps) {
-  const tool = getFieldTool(field.type);
+  const copy = useMessages().messages.envelope.prepare;
+  const tool = getFieldTool(field.type, copy);
   const isOptionalField = canBeOptional(field.type);
   // What is being typed, kept as typed. The field itself holds the tidied
   // value, and saving hands that back; without a copy of its own the box
@@ -1699,9 +1751,9 @@ function FieldEditor({
   const labelId = `${editorId}-label`;
 
   return (
-    <section aria-label="Field settings" role="region">
+    <section aria-label={copy.fieldSettings.ariaLabel} role="region">
       <div className="px-1">
-        <p className="section-eyebrow">Field settings</p>
+        <p className="section-eyebrow">{copy.fieldSettings.title}</p>
         <p className="mt-1 text-base font-extrabold text-(--fg)">
           {tool.label}
         </p>
@@ -1710,7 +1762,7 @@ function FieldEditor({
       <div className="mt-4 space-y-4">
         <div>
           <p className="px-1 text-[0.8125rem] font-semibold text-(--secondary)">
-            Assigned to
+            {copy.fieldSettings.assignedTo}
           </p>
           <div className="mt-2 grid gap-2">
             {signers.map((signer) => {
@@ -1746,7 +1798,7 @@ function FieldEditor({
               className="block px-1 text-[0.8125rem] font-semibold text-(--secondary)"
               htmlFor={optionsId}
             >
-              Choices
+              {copy.fieldSettings.choices}
             </label>
             <textarea
               aria-describedby={`${optionsId}-help`}
@@ -1756,7 +1808,7 @@ function FieldEditor({
                 setOptionsDraft(event.target.value);
                 onSetOptions(parseOptionLines(event.target.value));
               }}
-              placeholder={"Yes\nNo\nNot sure"}
+              placeholder={copy.fieldSettings.choicesPlaceholder}
               spellCheck={false}
               value={shownOptions}
             />
@@ -1769,8 +1821,11 @@ function FieldEditor({
               id={`${optionsId}-help`}
             >
               {optionCount < 2
-                ? "One choice per line. Add at least two."
-                : `One choice per line. ${String(optionCount)} of up to ${String(MAX_FIELD_OPTIONS)}. The signer picks one.`}
+                ? copy.fieldSettings.choicesTooFew
+                : formatMessage(copy.fieldSettings.choicesReady, {
+                    count: optionCount,
+                    max: MAX_FIELD_OPTIONS,
+                  })}
             </p>
           </div>
         ) : null}
@@ -1781,7 +1836,7 @@ function FieldEditor({
               className="block px-1 text-[0.8125rem] font-semibold text-(--secondary)"
               htmlFor={labelId}
             >
-              What this button means
+              {copy.fieldSettings.radioMeaning}
             </label>
             <input
               aria-describedby={`${labelId}-help`}
@@ -1792,7 +1847,7 @@ function FieldEditor({
                 setLabelDraft(event.target.value);
                 onSetLabel(event.target.value.trim() || undefined);
               }}
-              placeholder="Yes"
+              placeholder={copy.fieldSettings.radioPlaceholder}
               value={shownLabel}
             />
             <p
@@ -1804,8 +1859,10 @@ function FieldEditor({
               id={`${labelId}-help`}
             >
               {groupSize < 2
-                ? "A radio button needs at least one more in its group."
-                : `${String(groupSize)} buttons in this group. The signer picks one.`}
+                ? copy.fieldSettings.radioTooFew
+                : formatMessage(copy.fieldSettings.radioReady, {
+                    count: groupSize,
+                  })}
             </p>
             <button
               className="btn-quiet mt-2 w-full"
@@ -1813,7 +1870,7 @@ function FieldEditor({
               onClick={onAddRadioButton}
               type="button"
             >
-              + Add a button to this group
+              {copy.actions.addRadioButton}
             </button>
           </div>
         ) : null}
@@ -1821,16 +1878,18 @@ function FieldEditor({
         {isOptionalField ? (
           <div>
             <p className="px-1 text-[0.8125rem] font-semibold text-(--secondary)">
-              {field.type === "radio" ? "Required (whole group)" : "Required"}
+              {field.type === "radio"
+                ? copy.fieldSettings.requiredGroup
+                : copy.fieldSettings.required}
             </p>
             <div className="segmented mt-2 flex w-full">
               {[
                 {
-                  label: "Required",
+                  label: copy.fieldSettings.required,
                   value: true,
                 },
                 {
-                  label: "Optional",
+                  label: copy.fieldSettings.optional,
                   value: false,
                 },
               ].map((option) => (
@@ -1854,7 +1913,7 @@ function FieldEditor({
           type="button"
           variant="ghost"
         >
-          Delete
+          {copy.actions.delete}
         </Button>
       </div>
     </section>
@@ -1876,6 +1935,7 @@ function placeField(
   event: MouseEvent<HTMLButtonElement>,
   activePage: number,
   armedTool: PrepareFieldType,
+  copy: PrepareCopy,
   fieldCounterRef: MutableRefObject<number>,
   selectedSignerId: string,
   setArmedTool: Dispatch<SetStateAction<PrepareFieldType | null>>,
@@ -1883,7 +1943,7 @@ function placeField(
   setSelectedFieldId: Dispatch<SetStateAction<string | null>>,
 ) {
   const pageRect = event.currentTarget.getBoundingClientRect();
-  const tool = getFieldTool(armedTool);
+  const tool = getFieldTool(armedTool, copy);
   const nextRect = placeFieldAtViewportPoint({
     clientX: event.clientX - pageRect.left,
     clientY: event.clientY - pageRect.top,
@@ -1903,15 +1963,18 @@ function placeField(
       typeof window !== "undefined" && "crypto" in window
         ? window.crypto.randomUUID()
         : `field-${fieldCounterRef.current}`,
-    label: tool.type === "radio" ? "Option 1" : undefined,
+    label:
+      tool.type === "radio"
+        ? formatMessage(copy.optionLabel, { number: 1 })
+        : undefined,
     options: tool.type === "dropdown" ? [] : undefined,
     page: activePage,
     // Text, number and checkbox fields start optional; a dropdown or a
     // group of radio buttons is usually a question that needs an answer.
     required:
-      tool.type === "text" || tool.type === "number" || tool.type === "checkbox"
-        ? false
-        : true,
+      tool.type === "text" ||
+      tool.type === "number" ||
+      tool.type === "checkbox",
     signerId: selectedSignerId,
     type: tool.type,
   };
@@ -1951,6 +2014,7 @@ function updateField(
 /** Adds a radio button just below this one, in the same group. */
 function addRadioButton(
   fieldId: string,
+  copy: PrepareCopy,
   setFields: Dispatch<SetStateAction<PrepareField[]>>,
   setSelectedFieldId: Dispatch<SetStateAction<string | null>>,
 ) {
@@ -1983,7 +2047,7 @@ function addRadioButton(
       {
         ...source,
         id: nextId,
-        label: `Option ${String(group.length + 1)}`,
+        label: formatMessage(copy.optionLabel, { number: group.length + 1 }),
         y: Math.min(1 - source.height, lowest + source.height * 1.6),
       },
     ];
@@ -2022,6 +2086,7 @@ function resizeField(
   corner: FieldResizeHandle,
   deltaX: number,
   deltaY: number,
+  copy: PrepareCopy,
   setFields: Dispatch<SetStateAction<PrepareField[]>>,
 ) {
   if (deltaX === 0 && deltaY === 0) {
@@ -2034,7 +2099,7 @@ function resizeField(
         return field;
       }
 
-      const tool = getFieldTool(field.type);
+      const tool = getFieldTool(field.type, copy);
       const resizedRect = resizeFieldRectFromHandle({
         corner,
         deltaX,

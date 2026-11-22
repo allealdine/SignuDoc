@@ -8,7 +8,7 @@ import {
   getRequestUserAgent,
 } from "../security/request.ts";
 import { getSettings } from "../settings.ts";
-import { WebhookEndpointError, type WebhookActor } from "./endpoints.ts";
+import { type WebhookActor, WebhookEndpointError } from "./endpoints.ts";
 
 // What every /api/admin/webhooks route shares: administrators only, not on
 // a hosted install, never cached, and known errors become plain messages.

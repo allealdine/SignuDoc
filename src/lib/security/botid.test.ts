@@ -1,8 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-
-import { BOT_PROTECTED_ROUTES, isBotProtectedRoute } from "./botid-routes.ts";
 import { BOT_REJECTION_MESSAGE, rejectBots } from "./botid.ts";
+import { BOT_PROTECTED_ROUTES, isBotProtectedRoute } from "./botid-routes.ts";
 
 function post(path: string) {
   return new Request(`https://sign.example.com${path}`, { method: "POST" });

@@ -1,8 +1,7 @@
 import { z } from "zod";
 
+import { locales } from "../i18n/types.ts";
 import { signatureMeanings } from "../types/domain.ts";
-import { envelopePageSchema } from "./envelope.ts";
-import { fieldInputMethodSchema, fieldTypeSchema } from "./field.ts";
 import {
   emailSchema,
   envelopeTitleSchema,
@@ -13,6 +12,8 @@ import {
   optionalTrimmedString,
   unixTimestampSchema,
 } from "./common.ts";
+import { envelopePageSchema } from "./envelope.ts";
+import { fieldInputMethodSchema, fieldTypeSchema } from "./field.ts";
 
 export const signingUnavailableStateSchema = z.enum([
   "expired",
@@ -75,6 +76,8 @@ export const signingPayloadSchema = z.object({
   documentUrl: z.string().trim().min(1),
   envelopeId: idSchema,
   envelopeTitle: envelopeTitleSchema,
+  /** The language chosen when this person was invited. */
+  locale: z.enum(locales).default("en"),
   pageCount: z.number().int().positive(),
   pages: z.array(envelopePageSchema),
   /**

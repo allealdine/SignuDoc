@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
-
-import { PublicDocumentShell } from "@/components/layout/public-document-shell";
 import { RenewDownloadButton } from "@/components/downloads/renew-download-button";
+import { PublicDocumentShell } from "@/components/layout/public-document-shell";
 
 export const metadata: Metadata = {
   robots: { follow: false, index: false },

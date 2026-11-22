@@ -3,8 +3,8 @@ import { redirect } from "next/navigation";
 import { connection } from "next/server";
 
 import { PublicDocumentShell } from "@/components/layout/public-document-shell";
-import { getSettings } from "@/lib/settings";
 import { STALE_DRAFT_RETENTION_DAYS } from "@/lib/retention";
+import { getSettings } from "@/lib/settings";
 
 export const metadata: Metadata = {
   description: "How your information is used when you sign a document here.",

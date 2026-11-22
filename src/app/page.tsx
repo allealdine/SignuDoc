@@ -1,10 +1,21 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 
 import { LandingShell } from "@/components/landing/landing-shell";
 import { getAuthSession } from "@/lib/auth/server";
+import { getMessages } from "@/lib/i18n/messages.ts";
+import { getRequestLocale } from "@/lib/i18n/request.ts";
 import { redirectToSetupIfNeeded } from "@/lib/install";
 import { isHostedMode } from "@/lib/utils/env";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getRequestLocale();
+
+  return {
+    description: getMessages(locale).landing.metadata.description,
+  };
+}
 
 // The front door. A new install sends its first visitor to setup. After
 // that, the hosted service shows its landing page, and every other install

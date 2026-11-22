@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-
+import { formatMessage } from "@/lib/i18n/format.ts";
+import { useMessages } from "@/lib/i18n/messages-provider.tsx";
 import type { PeopleList, Person, PersonRole } from "@/lib/people";
 
 // Who has an account on this install, and which of them are administrators.
@@ -11,14 +12,14 @@ import type { PeopleList, Person, PersonRole } from "@/lib/people";
 // is the server's job: what is typed is sent along, and the list on screen
 // is the answer to it.
 
-const GENERIC_ERROR_MESSAGE = "Something went wrong. Please try again.";
 /** How long typing has to pause before the list is asked for again. */
 const SEARCH_DELAY_MS = 250;
 /** With fewer accounts than this, nobody needs to search. */
 const SEARCH_FROM_TOTAL = 9;
 
 type PeopleResponse =
-  (Partial<PeopleList> & { error?: string; you?: string }) | null;
+  | (Partial<PeopleList> & { error?: string; you?: string })
+  | null;
 
 function readPeopleList(payload: PeopleResponse): PeopleList | null {
   if (!payload || !Array.isArray(payload.people)) {
@@ -35,6 +36,8 @@ function readPeopleList(payload: PeopleResponse): PeopleList | null {
 }
 
 export function PeoplePanel({ part11Mode = false }: { part11Mode?: boolean }) {
+  const copy = useMessages().messages.settings.people;
+
   function showsPart11(person: Person) {
     return (
       part11Mode ||
@@ -86,7 +89,7 @@ export function PeoplePanel({ part11Mode = false }: { part11Mode?: boolean }) {
         const loaded = readPeopleList(payload);
 
         if (!response.ok || !loaded) {
-          setError(payload?.error ?? GENERIC_ERROR_MESSAGE);
+          setError(payload?.error ?? copy.genericError);
           return;
         }
 
@@ -97,10 +100,12 @@ export function PeoplePanel({ part11Mode = false }: { part11Mode?: boolean }) {
       .catch((loadError: unknown) => {
         // Leaving the page, or typing on, cancels the request; that is not
         // a failure.
-        if (!(
-          loadError instanceof DOMException && loadError.name === "AbortError"
-        )) {
-          setError(GENERIC_ERROR_MESSAGE);
+        if (
+          !(
+            loadError instanceof DOMException && loadError.name === "AbortError"
+          )
+        ) {
+          setError(copy.genericError);
         }
       });
 
@@ -130,7 +135,7 @@ export function PeoplePanel({ part11Mode = false }: { part11Mode?: boolean }) {
       const changed = readPeopleList(payload);
 
       if (!response.ok || !changed) {
-        setError(payload?.error ?? GENERIC_ERROR_MESSAGE);
+        setError(payload?.error ?? copy.genericError);
         return;
       }
 
@@ -149,7 +154,7 @@ export function PeoplePanel({ part11Mode = false }: { part11Mode?: boolean }) {
 
       setList(changed);
     } catch {
-      setError(GENERIC_ERROR_MESSAGE);
+      setError(copy.genericError);
     } finally {
       setPendingId(null);
     }
@@ -174,7 +179,7 @@ export function PeoplePanel({ part11Mode = false }: { part11Mode?: boolean }) {
       const changed = readPeopleList(payload);
 
       if (!response.ok || !changed) {
-        setError(payload?.error ?? GENERIC_ERROR_MESSAGE);
+        setError(payload?.error ?? copy.genericError);
         return;
       }
 
@@ -187,7 +192,7 @@ export function PeoplePanel({ part11Mode = false }: { part11Mode?: boolean }) {
 
       setList(changed);
     } catch {
-      setError(GENERIC_ERROR_MESSAGE);
+      setError(copy.genericError);
     } finally {
       setPendingId(null);
     }
@@ -223,7 +228,7 @@ export function PeoplePanel({ part11Mode = false }: { part11Mode?: boolean }) {
       const changed = readPeopleList(payload);
 
       if (!response.ok || !changed) {
-        setError(payload?.error ?? GENERIC_ERROR_MESSAGE);
+        setError(payload?.error ?? copy.genericError);
         return;
       }
 
@@ -237,7 +242,7 @@ export function PeoplePanel({ part11Mode = false }: { part11Mode?: boolean }) {
 
       setList(changed);
     } catch {
-      setError(GENERIC_ERROR_MESSAGE);
+      setError(copy.genericError);
     } finally {
       setPendingId(null);
     }
@@ -253,15 +258,10 @@ export function PeoplePanel({ part11Mode = false }: { part11Mode?: boolean }) {
     <div className="space-y-5 border-t border-(--border) pt-8">
       <div className="space-y-2">
         <h3 className="text-lg font-extrabold tracking-[-0.02em] text-(--fg)">
-          People
+          {copy.title}
         </h3>
         <p className="max-w-2xl text-sm leading-6 text-(--secondary)">
-          Everyone with an account here. Administrators can change these
-          settings, answer signer data requests and receive the finished
-          documents of accounts that are closed. When someone stops being an
-          administrator, the documents they received that way move to an
-          administrator who stays. Keep at least two, so that one person leaving
-          does not lock everyone out.
+          {copy.description}
         </p>
       </div>
 
@@ -272,18 +272,18 @@ export function PeoplePanel({ part11Mode = false }: { part11Mode?: boolean }) {
       ) : null}
 
       {people === null && !error ? (
-        <p className="text-sm text-(--secondary)">Loading people...</p>
+        <p className="text-sm text-(--secondary)">{copy.loading}</p>
       ) : null}
 
       {canSearch ? (
         <label className="grid max-w-sm gap-1.5">
           <span className="text-[0.8125rem] font-semibold text-(--secondary)">
-            Find a person
+            {copy.search.label}
           </span>
           <input
             className="field-input"
             onChange={(event) => setFilter(event.target.value)}
-            placeholder="Name or email"
+            placeholder={copy.search.placeholder}
             type="search"
             value={filter}
           />
@@ -291,7 +291,7 @@ export function PeoplePanel({ part11Mode = false }: { part11Mode?: boolean }) {
       ) : null}
 
       {people ? (
-        <ul aria-label="People" className="space-y-3">
+        <ul aria-label={copy.search.ariaLabel} className="space-y-3">
           {people.map((person) => {
             const isAdmin = person.role === "admin";
             const isYou = person.id === you;
@@ -313,18 +313,22 @@ export function PeoplePanel({ part11Mode = false }: { part11Mode?: boolean }) {
                     <span
                       className={`pill ${isAdmin ? "pill-accent" : "pill-neutral"}`}
                     >
-                      {isAdmin ? "Administrator" : "Member"}
+                      {isAdmin ? copy.role.admin : copy.role.member}
                     </span>
                     {isYou ? (
-                      <span className="pill pill-neutral">You</span>
+                      <span className="pill pill-neutral">
+                        {copy.status.you}
+                      </span>
                     ) : null}
                     {!person.emailVerified ? (
                       <span className="pill pill-warning">
-                        Email not confirmed
+                        {copy.status.emailNotConfirmed}
                       </span>
                     ) : null}
                     {person.closing ? (
-                      <span className="pill pill-warning">Closing</span>
+                      <span className="pill pill-warning">
+                        {copy.status.closing}
+                      </span>
                     ) : null}
                     {showsPart11(person) ? (
                       person.identityVerifiedAt !== null ? (
@@ -332,19 +336,23 @@ export function PeoplePanel({ part11Mode = false }: { part11Mode?: boolean }) {
                           className="pill pill-success"
                           title={person.identityVerificationNote ?? undefined}
                         >
-                          Identity confirmed
+                          {copy.identity.confirmed}
                         </span>
                       ) : (
                         <span className="pill pill-neutral">
-                          Identity not confirmed
+                          {copy.identity.notConfirmed}
                         </span>
                       )
                     ) : null}
                     {person.signingLockedAt !== null ? (
-                      <span className="pill pill-danger">Signing locked</span>
+                      <span className="pill pill-danger">
+                        {copy.status.signingLocked}
+                      </span>
                     ) : null}
                     {person.twoFactorEnabled ? (
-                      <span className="pill pill-success">Two-step on</span>
+                      <span className="pill pill-success">
+                        {copy.status.twoStepOn}
+                      </span>
                     ) : null}
                   </div>
                   {person.twoFactorEnabled && !isYou ? (
@@ -352,8 +360,7 @@ export function PeoplePanel({ part11Mode = false }: { part11Mode?: boolean }) {
                       {resettingId === person.id ? (
                         <>
                           <span className="text-sm text-(--secondary)">
-                            Turn off their two-step sign-in and sign them out
-                            everywhere?
+                            {copy.resetTwoFactor.confirm}
                           </span>
                           <button
                             className="btn-quiet btn-quiet-danger"
@@ -361,7 +368,9 @@ export function PeoplePanel({ part11Mode = false }: { part11Mode?: boolean }) {
                             onClick={() => void resetTwoFactorFor(person)}
                             type="button"
                           >
-                            {pendingId === person.id ? "Resetting..." : "Reset"}
+                            {pendingId === person.id
+                              ? copy.resetTwoFactor.resetting
+                              : copy.resetTwoFactor.reset}
                           </button>
                           <button
                             className="btn-quiet"
@@ -369,19 +378,24 @@ export function PeoplePanel({ part11Mode = false }: { part11Mode?: boolean }) {
                             onClick={() => setResettingId(null)}
                             type="button"
                           >
-                            Cancel
+                            {copy.resetTwoFactor.cancel}
                           </button>
                         </>
                       ) : (
                         <button
-                          aria-label={`Reset two-step sign-in for ${person.name}`}
+                          aria-label={formatMessage(
+                            copy.resetTwoFactor.ariaLabel,
+                            {
+                              name: person.name,
+                            },
+                          )}
                           className="btn-quiet"
                           disabled={pendingId !== null}
                           onClick={() => setResettingId(person.id)}
-                          title="For someone who lost their phone and their backup codes."
+                          title={copy.resetTwoFactor.description}
                           type="button"
                         >
-                          Reset two-step sign-in
+                          {copy.resetTwoFactor.title}
                         </button>
                       )}
                     </div>
@@ -394,7 +408,12 @@ export function PeoplePanel({ part11Mode = false }: { part11Mode?: boolean }) {
                       {person.identityVerifiedAt === null ? (
                         part11Mode || person.hasOpenPart11Signing ? (
                           <button
-                            aria-label={`Confirm ${person.name}'s identity`}
+                            aria-label={formatMessage(
+                              copy.confirmIdentity.ariaLabel,
+                              {
+                                name: person.name,
+                              },
+                            )}
                             className="btn-quiet"
                             disabled={
                               pendingId !== null ||
@@ -407,29 +426,36 @@ export function PeoplePanel({ part11Mode = false }: { part11Mode?: boolean }) {
                             }}
                             type="button"
                           >
-                            Confirm identity
+                            {copy.confirmIdentity.title}
                           </button>
                         ) : null
                       ) : (
                         <button
-                          aria-label={`Take back ${person.name}'s identity confirmation`}
+                          aria-label={formatMessage(
+                            copy.identity.takeBackAriaLabel,
+                            {
+                              name: person.name,
+                            },
+                          )}
                           className="btn-quiet btn-quiet-danger"
                           disabled={pendingId !== null}
                           onClick={() => void changePart11(person, "revoke")}
                           type="button"
                         >
-                          Take back confirmation
+                          {copy.identity.takeBack}
                         </button>
                       )}
                       {person.signingLockedAt !== null ? (
                         <button
-                          aria-label={`Unlock signing for ${person.name}`}
+                          aria-label={formatMessage(copy.unlock.ariaLabel, {
+                            name: person.name,
+                          })}
                           className="btn-quiet"
                           disabled={pendingId !== null}
                           onClick={() => void changePart11(person, "unlock")}
                           type="button"
                         >
-                          Unlock signing
+                          {copy.unlock.title}
                         </button>
                       ) : null}
                     </div>
@@ -438,7 +464,7 @@ export function PeoplePanel({ part11Mode = false }: { part11Mode?: boolean }) {
                     <div className="grid max-w-md gap-2 pt-2">
                       <label className="grid gap-1.5">
                         <span className="text-[0.8125rem] font-semibold text-(--secondary)">
-                          How did you check who this is?
+                          {copy.confirmIdentity.label}
                         </span>
                         <input
                           className="field-input"
@@ -446,7 +472,7 @@ export function PeoplePanel({ part11Mode = false }: { part11Mode?: boolean }) {
                           onChange={(event) =>
                             setVerificationNote(event.target.value)
                           }
-                          placeholder="For example: passport seen in person, HR record 4417"
+                          placeholder={copy.confirmIdentity.placeholder}
                           value={verificationNote}
                         />
                       </label>
@@ -460,7 +486,9 @@ export function PeoplePanel({ part11Mode = false }: { part11Mode?: boolean }) {
                           onClick={() => void changePart11(person, "verify")}
                           type="button"
                         >
-                          {pendingId === person.id ? "Saving..." : "Save"}
+                          {pendingId === person.id
+                            ? copy.confirmIdentity.saving
+                            : copy.confirmIdentity.save}
                         </button>
                         <button
                           className="btn-quiet"
@@ -468,7 +496,7 @@ export function PeoplePanel({ part11Mode = false }: { part11Mode?: boolean }) {
                           onClick={() => setVerifyingId(null)}
                           type="button"
                         >
-                          Cancel
+                          {copy.confirmIdentity.cancel}
                         </button>
                       </div>
                     </div>
@@ -477,24 +505,24 @@ export function PeoplePanel({ part11Mode = false }: { part11Mode?: boolean }) {
 
                 {isAdmin ? (
                   <button
-                    aria-label={`Remove ${person.name} as administrator`}
+                    aria-label={formatMessage(copy.role.removeAdminAriaLabel, {
+                      name: person.name,
+                    })}
                     className="btn-quiet btn-quiet-danger shrink-0"
                     disabled={pendingId !== null || isLastAdmin}
                     onClick={() => void changeRole(person, "user")}
-                    title={
-                      isLastAdmin
-                        ? "There has to be at least one administrator."
-                        : undefined
-                    }
+                    title={isLastAdmin ? copy.role.minimum : undefined}
                     type="button"
                   >
                     {pendingId === person.id
-                      ? "Saving..."
-                      : "Remove as administrator"}
+                      ? copy.role.saving
+                      : copy.role.removeAdmin}
                   </button>
                 ) : (
                   <button
-                    aria-label={`Make ${person.name} an administrator`}
+                    aria-label={formatMessage(copy.role.makeAdminAriaLabel, {
+                      name: person.name,
+                    })}
                     className="btn-quiet shrink-0"
                     disabled={
                       pendingId !== null ||
@@ -505,8 +533,8 @@ export function PeoplePanel({ part11Mode = false }: { part11Mode?: boolean }) {
                     type="button"
                   >
                     {pendingId === person.id
-                      ? "Saving..."
-                      : "Make administrator"}
+                      ? copy.role.saving
+                      : copy.role.makeAdmin}
                   </button>
                 )}
               </li>
@@ -516,13 +544,15 @@ export function PeoplePanel({ part11Mode = false }: { part11Mode?: boolean }) {
       ) : null}
 
       {people && people.length === 0 ? (
-        <p className="text-sm text-(--secondary)">Nobody matches that.</p>
+        <p className="text-sm text-(--secondary)">{copy.empty}</p>
       ) : null}
 
       {list && list.total > list.people.length ? (
         <p className="text-sm text-(--secondary)">
-          Showing the first {list.people.length} of {list.total}. Type part of a
-          name or an email address above to find the others.
+          {formatMessage(copy.pagination, {
+            shown: list.people.length,
+            total: list.total,
+          })}
         </p>
       ) : null}
     </div>

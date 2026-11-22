@@ -1,15 +1,21 @@
-import { contactFormSchema, type ContactFormInput } from "./schemas/contact.ts";
+import type { Messages } from "./i18n/locales/en.ts";
+import { getMessages } from "./i18n/messages.ts";
+import { DEFAULT_LOCALE, type Locale } from "./i18n/types.ts";
 import { resolvePublicSupportAddress } from "./public-contact.ts";
+import { type ContactFormInput, contactFormSchema } from "./schemas/contact.ts";
 import { createEmailService } from "./services/email.ts";
 import { ServiceConfigurationError } from "./services/service-config.ts";
-import { type EnvSource } from "./utils/env.ts";
+import type { EnvSource } from "./utils/env.ts";
 import { escapeHtml } from "./utils/html.ts";
 
 type ContactFieldName = "email" | "message" | "name";
 
 type SubmitPublicContactMessageOptions = {
   env?: EnvSource;
+  locale?: Locale;
 };
+
+type ContactFormErrors = Messages["contact"]["form"]["errors"];
 
 type SubmitPublicContactMessageResult = {
   ignored: boolean;
@@ -56,7 +62,10 @@ function isEmailServiceConfigurationError(error: unknown): boolean {
   );
 }
 
-function buildContactValidationError(input: unknown): ContactFormInput {
+function buildContactValidationError(
+  input: unknown,
+  copy: ContactFormErrors,
+): ContactFormInput {
   const parsedInput = contactFormSchema.safeParse(input);
 
   if (parsedInput.success) {
@@ -69,33 +78,31 @@ function buildContactValidationError(input: unknown): ContactFormInput {
     const field = issue.path[0];
 
     if (field === "name") {
-      fieldErrors.name = "Enter your name";
+      fieldErrors.name = copy.name;
     }
 
     if (field === "email") {
-      fieldErrors.email = "Enter a valid email address";
+      fieldErrors.email = copy.email;
     }
 
     if (field === "message") {
       fieldErrors.message =
-        issue.code === "too_big"
-          ? "Message must be 5000 characters or fewer"
-          : "Enter a message";
+        issue.code === "too_big" ? copy.messageTooLong : copy.message;
     }
   }
 
-  throw new ContactSubmissionError(
-    "Please review the highlighted fields.",
-    400,
-    fieldErrors,
-  );
+  throw new ContactSubmissionError(copy.reviewFields, 400, fieldErrors);
 }
 
 export async function submitPublicContactMessage(
   input: unknown,
-  { env = process.env }: SubmitPublicContactMessageOptions = {},
+  {
+    env = process.env,
+    locale = DEFAULT_LOCALE,
+  }: SubmitPublicContactMessageOptions = {},
 ): Promise<SubmitPublicContactMessageResult> {
-  const parsedInput = buildContactValidationError(input);
+  const errors = getMessages(locale).contact.form.errors;
+  const parsedInput = buildContactValidationError(input, errors);
 
   if (parsedInput.company) {
     return {
@@ -114,7 +121,7 @@ export async function submitPublicContactMessage(
     const emailService = createEmailService({ env });
     const deliveryResult = await emailService.send({
       htmlBody: [
-        "<p>A new public contact request was submitted through SignuDoc.</p>",
+        "<p>A new public contact request was submitted through Sakta.</p>",
         `<p><strong>Name:</strong> ${escapeHtml(parsedInput.name)}<br /><strong>Email:</strong> ${escapeHtml(parsedInput.email)}<br /><strong>Submitted at:</strong> ${escapeHtml(submittedAt)}</p>`,
         `<p><strong>Message:</strong><br />${escapedMessageHtml}</p>`,
       ].join(""),
@@ -122,7 +129,7 @@ export async function submitPublicContactMessage(
       subject: `[Contact] ${parsedInput.name}`,
       template: "contact_form",
       textBody: [
-        "A new public contact request was submitted through SignuDoc.",
+        "A new public contact request was submitted through Sakta.",
         "",
         `Name: ${parsedInput.name}`,
         `Email: ${parsedInput.email}`,
@@ -140,10 +147,7 @@ export async function submitPublicContactMessage(
     };
   } catch (error) {
     if (isEmailServiceConfigurationError(error)) {
-      throw new ContactSubmissionError(
-        "Contact form is temporarily unavailable.",
-        503,
-      );
+      throw new ContactSubmissionError(errors.unavailable, 503);
     }
 
     throw error;

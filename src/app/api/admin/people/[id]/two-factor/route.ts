@@ -4,14 +4,14 @@ import { requireAdminSession } from "@/lib/auth/admin";
 import { listPeople } from "@/lib/people";
 import { logRouteError } from "@/lib/security/logging";
 import {
-  applyRateLimit,
-  buildRateLimitKey,
-} from "@/lib/security/route-controls";
-import {
   getClientIpAddress,
   getRequestPathname,
   getRequestUserAgent,
 } from "@/lib/security/request";
+import {
+  applyRateLimit,
+  buildRateLimitKey,
+} from "@/lib/security/route-controls";
 import { resetTwoFactor, SignInSecurityError } from "@/lib/sign-in-security";
 
 type PersonRouteContext = {

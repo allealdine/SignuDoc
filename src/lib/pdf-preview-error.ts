@@ -13,14 +13,17 @@ export const PREVIEW_UNAVAILABLE_MESSAGE =
  * the server gives an encrypted file, so it gets the same message, not the
  * render failure every other preview error gets (issue #54).
  */
-export function describePdfPreviewFailure(error: unknown): string {
-  if (
+/** Lets callers pick a translated message without duplicating this check. */
+export function isLockedPdfFailure(error: unknown): boolean {
+  return (
     typeof error === "object" &&
     error !== null &&
     (error as { name?: unknown }).name === "PasswordException"
-  ) {
-    return LOCKED_PDF_MESSAGE;
-  }
+  );
+}
 
-  return PREVIEW_UNAVAILABLE_MESSAGE;
+export function describePdfPreviewFailure(error: unknown): string {
+  return isLockedPdfFailure(error)
+    ? LOCKED_PDF_MESSAGE
+    : PREVIEW_UNAVAILABLE_MESSAGE;
 }

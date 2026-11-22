@@ -283,7 +283,7 @@ async function fetchLatest(
   }
 
   if (response.status === 404) {
-    return fail("SignuDoc has no published release yet.");
+    return fail("Sakta has no published release yet.");
   }
 
   if (response.status === 403 || response.status === 429) {

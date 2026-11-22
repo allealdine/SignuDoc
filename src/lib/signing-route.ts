@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 
 import {
   readCookie,
-  verifiedMethodsFromCookies,
   type SignerCheckMethod,
+  verifiedMethodsFromCookies,
 } from "./signer-checks.ts";
 import type { SigningVerificationRequiredError } from "./signing.ts";
 

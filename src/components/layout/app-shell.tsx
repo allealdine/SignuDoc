@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState, type ComponentProps, type ReactNode } from "react";
+import { type ComponentProps, type ReactNode, useState } from "react";
 
 import { Brand } from "@/components/layout/brand";
 import {
-  primaryNavItems,
+  getPrimaryNavItems,
   type ShellNavItem,
 } from "@/components/layout/nav-items";
 import {
@@ -19,6 +19,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { authClient } from "@/lib/auth/client";
 import { cn } from "@/lib/cn";
+import { formatMessage } from "@/lib/i18n/format.ts";
+import { useMessages } from "@/lib/i18n/messages-provider.tsx";
 import { getInitials } from "@/lib/initials";
 
 type AppShellProps = {
@@ -32,7 +34,11 @@ type AppShellProps = {
 };
 
 type ShellSection =
-  "documents" | "new-envelope" | "settings" | "templates" | "workspace";
+  | "documents"
+  | "new-envelope"
+  | "settings"
+  | "templates"
+  | "workspace";
 
 export function AppShell({
   children,
@@ -41,9 +47,12 @@ export function AppShell({
 }: AppShellProps) {
   const pathname = usePathname() ?? "/dashboard";
   const router = useRouter();
+  const { messages } = useMessages();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const currentSection = resolveSection(pathname);
   const initials = getInitials(user.name, { max: 2 }) || "SU";
+  const navItems = getPrimaryNavItems(messages.shell.nav);
+  const shell = messages.shell;
 
   async function handleSignOut() {
     if (isSigningOut) {
@@ -72,10 +81,10 @@ export function AppShell({
           <div className="flex min-w-0 items-center gap-7">
             <Brand href="/" />
             <nav
-              aria-label="Workspace"
+              aria-label={shell.workspaceAriaLabel}
               className="hidden items-center gap-1 md:flex"
             >
-              {primaryNavItems.map((item) => (
+              {navItems.map((item) => (
                 <AppNavLink
                   currentSection={currentSection}
                   item={item}
@@ -88,7 +97,9 @@ export function AppShell({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
-                aria-label={`Account menu for ${user.name}`}
+                aria-label={formatMessage(shell.accountMenuAriaLabel, {
+                  name: user.name,
+                })}
                 className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-[#ffd9c2] text-[0.8125rem] font-bold text-[#7a3412] transition hover:ring-4 hover:ring-[rgba(28,29,43,0.06)]"
                 type="button"
               >
@@ -106,7 +117,7 @@ export function AppShell({
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
-                <Link href="/settings">Settings</Link>
+                <Link href="/settings">{shell.settingsLink}</Link>
               </DropdownMenuItem>
               <DropdownMenuItem
                 disabled={isSigningOut}
@@ -122,16 +133,16 @@ export function AppShell({
                 }}
                 variant="destructive"
               >
-                {isSigningOut ? "Signing out..." : "Sign out"}
+                {isSigningOut ? shell.signingOut : shell.signOut}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
           <nav
-            aria-label="Workspace"
+            aria-label={shell.workspaceAriaLabel}
             className="-mx-1 flex w-full items-center gap-1 overflow-x-auto px-1 pb-1 md:hidden"
           >
-            {primaryNavItems.map((item) => (
+            {navItems.map((item) => (
               <AppNavLink
                 currentSection={currentSection}
                 item={item}
@@ -150,15 +161,14 @@ export function AppShell({
               role="status"
             >
               <p className="text-sm leading-6 text-(--fg)">
-                <span className="font-bold">Email is not set up yet.</span>{" "}
-                Until it is, signers and new users will not receive messages
-                from this site.
+                <span className="font-bold">{shell.emailNotice.title}</span>{" "}
+                {shell.emailNotice.description}
               </p>
               <Link
                 className="shrink-0 text-sm font-bold text-(--warning) underline underline-offset-4"
                 href="/settings#organization"
               >
-                Finish email setup
+                {shell.emailNotice.action}
               </Link>
             </div>
           ) : null}

@@ -11,11 +11,12 @@ import {
 
 async function extractText(pdfBytes: Uint8Array): Promise<string> {
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
-  const document = await pdfjs.getDocument({
+  const loadingTask = pdfjs.getDocument({
     data: new Uint8Array(pdfBytes),
     useSystemFonts: false,
     verbosity: 0,
-  }).promise;
+  });
+  const document = await loadingTask.promise;
   const parts: string[] = [];
 
   for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
@@ -27,7 +28,7 @@ async function extractText(pdfBytes: Uint8Array): Promise<string> {
     );
   }
 
-  await document.destroy();
+  await loadingTask.destroy();
 
   return parts.join("\n");
 }
@@ -152,17 +153,18 @@ async function readSignatureLines(
   pdfBytes: Uint8Array,
 ): Promise<{ str: string; width: number }[]> {
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
-  const document = await pdfjs.getDocument({
+  const loadingTask = pdfjs.getDocument({
     data: new Uint8Array(pdfBytes),
     useSystemFonts: false,
     verbosity: 0,
-  }).promise;
+  });
+  const document = await loadingTask.promise;
   const content = await (await document.getPage(1)).getTextContent();
   const items = (content.items as { str?: string; width?: number }[])
     .filter((item) => item.str)
     .map((item) => ({ str: item.str!, width: item.width ?? 0 }));
 
-  await document.destroy();
+  await loadingTask.destroy();
 
   return items;
 }

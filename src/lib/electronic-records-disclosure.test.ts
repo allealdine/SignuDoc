@@ -4,10 +4,12 @@ import { test } from "node:test";
 import {
   buildDisclosureSections,
   buildElectronicRecordsDisclosure,
+  consentStatement,
   DISCLOSURE_MAX_LENGTH,
   disclosureSectionsAsText,
   ELECTRONIC_RECORDS_DISCLOSURE_VERSION,
   getDisclosureVersion,
+  INDONESIAN_DISCLOSURE_VERSION,
   normalizeCustomDisclosure,
   standardDisclosureTemplate,
   toStoredCustomDisclosure,
@@ -27,6 +29,29 @@ test("with no custom text the built-in disclosure and its dated version are used
       ELECTRONIC_RECORDS_DISCLOSURE_VERSION,
     );
   }
+});
+
+test("Indonesian words get their own version and consent sentence", () => {
+  const sections = buildDisclosureSections(party, null, "id");
+
+  assert.equal(
+    sections[0]?.heading,
+    "Menggunakan catatan dan tanda tangan elektronik",
+  );
+  assert.match(sections[0]?.text ?? "", /Acme Corp/);
+  assert.match(sections[1]?.text ?? "", /help@acme.com/);
+  assert.equal(getDisclosureVersion(null, "id"), INDONESIAN_DISCLOSURE_VERSION);
+  assert.notEqual(
+    INDONESIAN_DISCLOSURE_VERSION,
+    ELECTRONIC_RECORDS_DISCLOSURE_VERSION,
+  );
+  assert.match(consentStatement("id"), /^Saya telah membaca/);
+  assert.match(consentStatement(), /^I have read/);
+  // A custom text is named by its own words, whatever the UI language.
+  assert.equal(
+    getDisclosureVersion("Agree to sign online.", "id"),
+    getDisclosureVersion("Agree to sign online.", "en"),
+  );
 });
 
 test("a custom disclosure is split on blank lines, with headings where marked", () => {

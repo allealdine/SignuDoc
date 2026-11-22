@@ -4,6 +4,7 @@ import { BulkSendShell } from "@/components/templates/bulk-send-shell";
 import { getAuthSession } from "@/lib/auth/server";
 import { exampleCsvForRoles, MAX_BULK_SEND_ROWS } from "@/lib/bulk-send-csv";
 import { getDb } from "@/lib/db/connection";
+import { getRequestLocale } from "@/lib/i18n/request.ts";
 import { getSettings } from "@/lib/settings";
 import {
   describeUnsendableTemplate,
@@ -25,9 +26,12 @@ export default async function BulkSendPage({ params }: BulkSendPageProps) {
   let part11Mode = false;
 
   try {
-    const session = await getAuthSession();
+    const [session, locale] = await Promise.all([
+      getAuthSession(),
+      getRequestLocale(),
+    ]);
     const loaded = session
-      ? await getTemplateForBulkSend(session.user.id, id, getDb())
+      ? await getTemplateForBulkSend(session.user.id, id, getDb(), locale)
       : null;
     const unsendable = loaded
       ? describeUnsendableTemplate(loaded.roles, loaded.fields)

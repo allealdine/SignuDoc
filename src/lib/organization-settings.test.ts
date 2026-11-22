@@ -9,7 +9,7 @@ import {
   OrganizationSettingsError,
   updateOrganizationSettings,
 } from "./organization-settings.ts";
-import { resolveSettings, type AppSettings } from "./settings.ts";
+import { type AppSettings, resolveSettings } from "./settings.ts";
 
 const stored: AppSettings = {
   allowedEmailDomains: ["acme.com"],

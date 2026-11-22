@@ -5,11 +5,11 @@ import { requireVerifiedSenderSession } from "@/lib/auth/route-session";
 import { getDb } from "@/lib/db/connection";
 import { copyEnvelopeToDraft, EnvelopeMutationError } from "@/lib/envelopes";
 import { logRouteError } from "@/lib/security/logging";
+import { getClientIpAddress, getRequestPathname } from "@/lib/security/request";
 import {
   applyRateLimit,
   buildRateLimitKey,
 } from "@/lib/security/route-controls";
-import { getClientIpAddress, getRequestPathname } from "@/lib/security/request";
 
 type EnvelopeCopyRouteContext = {
   params: Promise<{

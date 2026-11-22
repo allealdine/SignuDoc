@@ -42,10 +42,10 @@ import {
   addSignatureTimestamp,
   assembleSignedData,
   buildSignedAttributes,
+  CMS_OIDS,
   certificateHolderNames,
   certificateMatchesName,
   checkSignerSignature,
-  CMS_OIDS,
   ecdsaSignatureAsDer,
   SignerSignatureError,
 } from "./signer-cms.ts";

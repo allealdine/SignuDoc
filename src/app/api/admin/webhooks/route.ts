@@ -5,6 +5,12 @@ import {
   buildRateLimitKey,
 } from "@/lib/security/route-controls";
 import {
+  handleWebhookAdmin,
+  noStore,
+  notAJsonObject,
+  readJsonObject,
+} from "@/lib/webhooks/admin-route";
+import {
   createWebhookEndpoint,
   listWebhookEndpoints,
   parseWebhookDescription,
@@ -13,12 +19,6 @@ import {
   parseWebhookEventTypes,
   webhookEventTypes,
 } from "@/lib/webhooks/events";
-import {
-  handleWebhookAdmin,
-  noStore,
-  notAJsonObject,
-  readJsonObject,
-} from "@/lib/webhooks/admin-route";
 
 // Webhook endpoints for the whole install. Administrators only. The signing
 // secret is in the response that creates an endpoint, and nowhere else.

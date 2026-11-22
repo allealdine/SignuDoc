@@ -4,13 +4,13 @@ import { FileTextIcon, UploadIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  type ChangeEvent,
+  type DragEvent,
+  type KeyboardEvent,
   startTransition,
   useEffect,
   useRef,
   useState,
-  type ChangeEvent,
-  type DragEvent,
-  type KeyboardEvent,
 } from "react";
 
 import { FieldShell, ShellButton } from "@/components/shared/form-shell";
@@ -19,32 +19,22 @@ import { StepIndicator } from "@/components/shared/step-indicator";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { cacheDraftPdfBlob } from "@/lib/draft-pdf-cache";
+import { useMessages } from "@/lib/i18n/messages-provider.tsx";
+import { intlLocales, type Locale } from "@/lib/i18n/types.ts";
+import { isLockedPdfFailure } from "@/lib/pdf-preview-error";
 import {
   renderPdfThumbnail,
   uploadEnvelopeThumbnail,
 } from "@/lib/pdf-thumbnail";
-import {
-  describePdfPreviewFailure,
-  PREVIEW_UNAVAILABLE_MESSAGE,
-} from "@/lib/pdf-preview-error";
 import { assertPdfPreviewRenderable } from "@/lib/pdfjs-client";
-import { type CreateEnvelopeResponse } from "@/lib/schemas/envelope";
+import type { CreateEnvelopeResponse } from "@/lib/schemas/envelope";
 
-const envelopeSteps = ["Upload", "Signers", "Place fields", "Review"];
 const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024;
-
-type UploadErrorCode = "invalid-type" | "preview-unavailable" | "too-large";
 
 type UploadSummary = {
   file: File;
   fileName: string;
   sizeLabel: string;
-};
-
-const errorMessageMap: Record<UploadErrorCode, string> = {
-  "invalid-type": "Only PDF files are supported. Please upload a valid PDF.",
-  "preview-unavailable": PREVIEW_UNAVAILABLE_MESSAGE,
-  "too-large": "This file exceeds the 20 MB limit.",
 };
 
 const knownTitleSuggestions: Record<string, string> = {
@@ -53,14 +43,15 @@ const knownTitleSuggestions: Record<string, string> = {
   "vendor-agreement-two-signer.pdf": "Vendor agreement - two signer flow",
 };
 
-function formatFileSize(sizeInBytes: number) {
+function formatFileSize(sizeInBytes: number, locale: Locale) {
   const sizeInMegabytes = sizeInBytes / (1024 * 1024);
+  const numberFormat = new Intl.NumberFormat(intlLocales[locale]);
 
   if (sizeInMegabytes >= 1) {
-    return `${sizeInMegabytes.toFixed(1)} MB`;
+    return `${numberFormat.format(Number(sizeInMegabytes.toFixed(1)))} MB`;
   }
 
-  return `${Math.max(1, Math.round(sizeInBytes / 1024))} KB`;
+  return `${numberFormat.format(Math.max(1, Math.round(sizeInBytes / 1024)))} KB`;
 }
 
 function makeTitleSuggestion(fileName: string) {
@@ -121,6 +112,8 @@ function UploadShellLayout({
   summary: UploadSummary | null;
   title: string;
 }) {
+  const { messages } = useMessages();
+  const copy = messages.envelope.upload;
   const dropzoneClasses = isBusy
     ? "border-(--accent) bg-(--accent-softer)"
     : errorMessage
@@ -134,14 +127,14 @@ function UploadShellLayout({
       <PageHeader
         action={
           <Link className="btn-quiet min-h-11 px-4" href="/templates">
-            Start from a template
+            {copy.action.fromTemplate}
           </Link>
         }
-        description="Step 1 of 4 - Upload document"
-        title="New envelope"
+        description={copy.header.description}
+        title={copy.header.title}
       />
 
-      <StepIndicator current={1} steps={envelopeSteps} />
+      <StepIndicator current={1} steps={messages.envelope.steps} />
 
       <section
         className="panel p-5 sm:p-8"
@@ -150,16 +143,16 @@ function UploadShellLayout({
       >
         <div className="space-y-6">
           <FieldShell
-            label="Envelope title"
+            label={copy.title.label}
             onChange={onTitleChange}
-            placeholder="e.g., NDA - Client Bravo"
+            placeholder={copy.title.placeholder}
             readOnly={false}
             value={title}
           />
 
           <div
             aria-busy={isBusy}
-            aria-label="Document upload dropzone"
+            aria-label={copy.dropzone.ariaLabel}
             className={cn(
               "cursor-pointer rounded-[1.25rem] border-2 border-dashed px-6 py-10 text-center transition sm:px-10 sm:py-12",
               dropzoneClasses,
@@ -176,7 +169,7 @@ function UploadShellLayout({
               {isBusy ? (
                 <>
                   <div
-                    aria-label="Upload progress"
+                    aria-label={copy.dropzone.progressAriaLabel}
                     className="h-2 w-full max-w-sm overflow-hidden rounded-full bg-white"
                     role="progressbar"
                   >
@@ -184,10 +177,10 @@ function UploadShellLayout({
                   </div>
                   <div className="space-y-1.5">
                     <p className="text-lg font-bold tracking-[-0.02em] text-(--fg)">
-                      Uploading...
+                      {copy.dropzone.uploading}
                     </p>
                     <p className="text-sm leading-6 text-(--secondary)">
-                      Validating the PDF before you continue to signer setup.
+                      {copy.dropzone.validating}
                     </p>
                   </div>
                 </>
@@ -202,17 +195,17 @@ function UploadShellLayout({
                   </span>
                   <div className="space-y-1.5">
                     <p className="text-lg font-bold tracking-[-0.02em] text-(--fg)">
-                      Drag and drop your PDF here
+                      {copy.dropzone.drag}
                     </p>
                     <p className="text-sm text-(--secondary)">
-                      or{" "}
+                      {copy.dropzone.or}{" "}
                       <span className="font-bold text-(--accent-ink) underline decoration-[rgb(var(--accent-rgb)/0.35)] underline-offset-4">
-                        click to browse
+                        {copy.dropzone.browse}
                       </span>
                     </p>
                   </div>
                   <p className="text-[0.8125rem] font-medium text-(--tertiary)">
-                    PDF only - 20 MB max
+                    {copy.dropzone.constraint}
                   </p>
                 </>
               )}
@@ -261,7 +254,7 @@ function UploadShellLayout({
                 type="button"
                 variant="outline"
               >
-                Remove
+                {copy.action.remove}
               </Button>
             </section>
           ) : null}
@@ -272,7 +265,7 @@ function UploadShellLayout({
               loading={isSubmitting}
               onClick={onContinue}
             >
-              Next -&gt;
+              {copy.action.next}
             </ShellButton>
           </div>
         </div>
@@ -330,6 +323,8 @@ type UploadShellProps = {
 
 export function UploadShell({ directUploadPrefix = null }: UploadShellProps) {
   const router = useRouter();
+  const { locale, messages } = useMessages();
+  const copy = messages.envelope.upload;
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState<UploadSummary | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -391,15 +386,17 @@ export function UploadShell({ directUploadPrefix = null }: UploadShellProps) {
     response: Response,
   ): Promise<{ data: T | null; error: string | null }> {
     const payload = (await response.json().catch(() => null)) as
-      { error?: string } | T | null;
+      | { error?: string }
+      | T
+      | null;
 
     if (!response.ok) {
       return {
         data: null,
         error:
           payload && typeof payload === "object" && "error" in payload
-            ? (payload.error ?? "Something went wrong. Please try again.")
-            : "Something went wrong. Please try again.",
+            ? (payload.error ?? copy.error.generic)
+            : copy.error.generic,
       };
     }
 
@@ -411,14 +408,14 @@ export function UploadShell({ directUploadPrefix = null }: UploadShellProps) {
 
   function beginUpload(file: File) {
     if (!isClientVisiblePdf(file)) {
-      setErrorMessage(errorMessageMap["invalid-type"]);
+      setErrorMessage(copy.error.invalidType);
       setSummary(null);
       startThumbnail(null);
       return;
     }
 
     if (file.size > MAX_FILE_SIZE_BYTES) {
-      setErrorMessage(errorMessageMap["too-large"]);
+      setErrorMessage(copy.error.tooLarge);
       setSummary(null);
       startThumbnail(null);
       return;
@@ -431,7 +428,7 @@ export function UploadShell({ directUploadPrefix = null }: UploadShellProps) {
     setSummary({
       file,
       fileName: file.name,
-      sizeLabel: formatFileSize(file.size),
+      sizeLabel: formatFileSize(file.size, locale),
     });
     setErrorMessage(null);
 
@@ -506,7 +503,11 @@ export function UploadShell({ directUploadPrefix = null }: UploadShellProps) {
           "Failed to validate the PDF preview before draft creation.",
           error,
         );
-        setErrorMessage(describePdfPreviewFailure(error));
+        setErrorMessage(
+          isLockedPdfFailure(error)
+            ? copy.error.locked
+            : copy.error.previewUnavailable,
+        );
         setIsCreatingDraft(false);
         return;
       }
@@ -521,9 +522,7 @@ export function UploadShell({ directUploadPrefix = null }: UploadShellProps) {
       const payload = await parseResponse<CreateEnvelopeResponse>(response);
 
       if (!payload.data || payload.error) {
-        setErrorMessage(
-          payload.error ?? "Something went wrong. Please try again.",
-        );
+        setErrorMessage(payload.error ?? copy.error.generic);
 
         if (response.status === 400) {
           setSummary(null);
@@ -558,7 +557,7 @@ export function UploadShell({ directUploadPrefix = null }: UploadShellProps) {
         router.push(redirectPath);
       });
     } catch {
-      setErrorMessage("Something went wrong. Please try again.");
+      setErrorMessage(copy.error.generic);
       setIsCreatingDraft(false);
     }
   }
@@ -587,7 +586,7 @@ export function UploadShell({ directUploadPrefix = null }: UploadShellProps) {
     >
       <input
         accept=".pdf,application/pdf"
-        aria-label="Upload PDF"
+        aria-label={copy.fileInputAriaLabel}
         className="sr-only"
         onChange={handleInputChange}
         ref={fileInputRef}

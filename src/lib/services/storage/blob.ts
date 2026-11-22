@@ -1,6 +1,6 @@
 import { BlobNotFoundError, del, get, head, put } from "@vercel/blob";
 
-import { type EnvSource } from "../../utils/env.ts";
+import type { EnvSource } from "../../utils/env.ts";
 import { ServiceConfigurationError } from "../service-config.ts";
 import { hasBlobCredentials } from "./driver.ts";
 import {

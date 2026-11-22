@@ -14,6 +14,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { formatMessage } from "@/lib/i18n/format.ts";
+import { useMessages } from "@/lib/i18n/messages-provider.tsx";
 import type { TemplateListItem } from "@/lib/templates";
 
 type TemplatesShellProps = {
@@ -21,13 +23,11 @@ type TemplatesShellProps = {
   templates?: readonly TemplateListItem[];
 };
 
-const pageDescription =
-  "Documents you send often, with their fields and signing order already in place.";
-
 export function TemplatesShell({
   initialState,
   templates = [],
 }: TemplatesShellProps) {
+  const copy = useMessages().messages.templates;
   const router = useRouter();
   const [pendingDelete, setPendingDelete] = useState<TemplateListItem | null>(
     null,
@@ -54,14 +54,14 @@ export function TemplatesShell({
           error?: string;
         } | null;
 
-        setDeleteError(payload?.error ?? "Unable to delete this template.");
+        setDeleteError(payload?.error ?? copy.delete.error);
         return;
       }
 
       setPendingDelete(null);
       router.refresh();
     } catch {
-      setDeleteError("Unable to delete this template.");
+      setDeleteError(copy.delete.error);
     } finally {
       setIsDeleting(false);
     }
@@ -70,11 +70,14 @@ export function TemplatesShell({
   if (initialState === "error") {
     return (
       <div className="space-y-5">
-        <PageHeader description={pageDescription} title="Templates" />
+        <PageHeader
+          description={copy.header.description}
+          title={copy.header.title}
+        />
         <StatusPanel
-          action={{ href: "/templates", label: "Retry" }}
-          description="We couldn't load your templates. Try again in a moment."
-          title="Couldn't load templates"
+          action={{ href: "/templates", label: copy.error.retry }}
+          description={copy.error.description}
+          title={copy.error.title}
           tone="error"
         />
       </div>
@@ -83,7 +86,10 @@ export function TemplatesShell({
 
   return (
     <div className="space-y-5">
-      <PageHeader description={pageDescription} title="Templates" />
+      <PageHeader
+        description={copy.header.description}
+        title={copy.header.title}
+      />
 
       {templates.length === 0 ? (
         <section
@@ -97,14 +103,13 @@ export function TemplatesShell({
             </span>
             <div className="space-y-2">
               <h2 className="text-2xl font-extrabold tracking-[-0.03em] text-(--fg)">
-                No templates yet
+                {copy.empty.title}
               </h2>
               <p className="text-[0.9375rem] leading-6 text-(--secondary)">
-                Open any document you have prepared or sent and choose Save as
-                template. Next time, you only name the people who sign.
+                {copy.empty.description}
               </p>
             </div>
-            <ShellButton href="/dashboard">Go to documents</ShellButton>
+            <ShellButton href="/dashboard">{copy.empty.action}</ShellButton>
           </div>
         </section>
       ) : (
@@ -124,11 +129,18 @@ export function TemplatesShell({
                     {template.name}
                   </h2>
                   <p className="text-sm leading-6 text-(--secondary)">
-                    {template.pageCountLabel} · {template.fieldCountLabel} ·
-                    Saved {template.createdAtLabel}
+                    {formatMessage(copy.card.meta, {
+                      fieldCount: template.fieldCountLabel,
+                      pageCount: template.pageCountLabel,
+                      saved: formatMessage(copy.card.saved, {
+                        date: template.createdAtLabel,
+                      }),
+                    })}
                   </p>
                   <ul
-                    aria-label={`Signers in ${template.name}`}
+                    aria-label={formatMessage(copy.card.roleAriaLabel, {
+                      templateName: template.name,
+                    })}
                     className="flex flex-wrap gap-2"
                   >
                     {template.roleNames.map((roleName, index) => (
@@ -136,14 +148,19 @@ export function TemplatesShell({
                         className="pill pill-neutral"
                         key={`${String(index)}-${roleName}`}
                       >
-                        {index + 1}. {roleName}
+                        {formatMessage(copy.card.roleItem, {
+                          index: index + 1,
+                          name: roleName,
+                        })}
                       </li>
                     ))}
                   </ul>
                 </div>
                 <div className="flex shrink-0 flex-wrap items-center gap-2">
                   <button
-                    aria-label={`Delete the template ${template.name}`}
+                    aria-label={formatMessage(copy.delete.triggerAriaLabel, {
+                      templateName: template.name,
+                    })}
                     className="btn-quiet btn-quiet-danger min-h-11 px-4"
                     onClick={() => {
                       setDeleteError(null);
@@ -151,20 +168,20 @@ export function TemplatesShell({
                     }}
                     type="button"
                   >
-                    Delete
+                    {copy.delete.triggerLabel}
                   </button>
                   <ShellButton
                     className="min-h-11"
                     href={`/templates/${template.id}/send-many`}
                     variant="secondary"
                   >
-                    Send to many
+                    {copy.sendToMany}
                   </ShellButton>
                   <ShellButton
                     className="min-h-11"
                     href={`/templates/${template.id}/use`}
                   >
-                    Use template
+                    {copy.use}
                   </ShellButton>
                 </div>
               </li>
@@ -185,14 +202,15 @@ export function TemplatesShell({
           <DialogContent className="max-w-md sm:p-8" showCloseButton={false}>
             <div className="space-y-4">
               <DialogHeader className="space-y-3">
-                <DialogTitle>Delete this template?</DialogTitle>
+                <DialogTitle>{copy.delete.title}</DialogTitle>
                 <DialogDescription asChild>
                   <div className="space-y-2 text-sm leading-6 text-(--secondary)">
                     <p>
-                      &ldquo;{pendingDelete.name}&rdquo; will be removed for
-                      good.
+                      {formatMessage(copy.delete.description.removed, {
+                        templateName: pendingDelete.name,
+                      })}
                     </p>
-                    <p>Documents you already made from it are not affected.</p>
+                    <p>{copy.delete.description.retained}</p>
                   </div>
                 </DialogDescription>
               </DialogHeader>
@@ -209,14 +227,14 @@ export function TemplatesShell({
                   onClick={() => setPendingDelete(null)}
                   variant="secondary"
                 >
-                  Cancel
+                  {copy.delete.cancel}
                 </ShellButton>
                 <ShellButton
                   loading={isDeleting}
                   onClick={handleConfirmDelete}
                   variant="danger"
                 >
-                  {isDeleting ? "Deleting..." : "Delete template"}
+                  {isDeleting ? copy.delete.deleting : copy.delete.confirm}
                 </ShellButton>
               </div>
             </div>

@@ -1,9 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
-
-import { FieldShell, ShellButton } from "@/components/shared/form-shell";
+import { type ChangeEvent, type FormEvent, useEffect, useState } from "react";
 import { ApiKeysPanel } from "@/components/settings/api-keys-panel";
 import { BrandingPanel } from "@/components/settings/branding-panel";
 import { EmbeddingPanel } from "@/components/settings/embedding-panel";
@@ -12,12 +10,7 @@ import { PeoplePanel } from "@/components/settings/people-panel";
 import { SecurityPanel } from "@/components/settings/security-panel";
 import { SignerDataPanel } from "@/components/settings/signer-data-panel";
 import { WebhooksPanel } from "@/components/settings/webhooks-panel";
-import {
-  Field,
-  FieldDescription,
-  FieldError,
-  FieldLabel,
-} from "@/components/ui/field";
+import { FieldShell, ShellButton } from "@/components/shared/form-shell";
 import {
   Dialog,
   DialogContent,
@@ -26,6 +19,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+} from "@/components/ui/field";
 import { Textarea } from "@/components/ui/textarea";
 import {
   CUSTOM_DISCLOSURE_LEGAL_NOTE,
@@ -33,6 +32,9 @@ import {
   tidyDisclosureText,
 } from "@/lib/consent-disclosure-notice";
 import type { EmailDnsRecord, EmailStatus } from "@/lib/email-status";
+import { formatMessage } from "@/lib/i18n/format.ts";
+import type { Messages } from "@/lib/i18n/locales/en.ts";
+import { useMessages } from "@/lib/i18n/messages-provider.tsx";
 import type {
   OrganizationSettingsField,
   OrganizationSettingsView,
@@ -42,9 +44,10 @@ import type { SignupMode } from "@/lib/signup-policy";
 // The administrator's part of Settings: what the install is called, who can
 // sign up, where email comes from, and whether email works yet.
 
-const GENERIC_ERROR_MESSAGE = "Something went wrong. Please try again.";
 const RESEND_DOMAINS_URL = "https://resend.com/domains";
 const RESEND_MARKETPLACE_URL = "https://vercel.com/marketplace/resend";
+
+type OrganizationCopy = Messages["settings"]["organization"];
 
 type OrganizationSettingsProps = {
   initialSettings: OrganizationSettingsView;
@@ -71,33 +74,33 @@ type EmailResponse = {
 
 type EmailAction = "add_domain" | "recheck" | "send_test";
 
-const signupModeOptions: Array<{
-  description: string;
-  label: string;
-  value: SignupMode;
-}> = [
-  {
-    description:
-      "Only people whose email address is at one of your domains can create an account.",
-    label: "People at my organization",
-    value: "domains",
-  },
-  {
-    description: "Nobody new can create an account.",
-    label: "Nobody",
-    value: "closed",
-  },
-  {
-    description: "Anyone who finds this site can create an account.",
-    label: "Anyone",
-    value: "open",
-  },
-];
+function signupModeOptions(
+  copy: OrganizationCopy["signup"]["options"],
+): Array<{ description: string; label: string; value: SignupMode }> {
+  return [
+    {
+      description: copy.domains.description,
+      label: copy.domains.label,
+      value: "domains",
+    },
+    {
+      description: copy.closed.description,
+      label: copy.closed.label,
+      value: "closed",
+    },
+    {
+      description: copy.open.description,
+      label: copy.open.label,
+      value: "open",
+    },
+  ];
+}
 
 export function OrganizationSettings({
   initialSettings,
 }: OrganizationSettingsProps) {
   const router = useRouter();
+  const copy = useMessages().messages.settings.organization;
   const [values, setValues] = useState(initialSettings);
   const [errors, setErrors] = useState<FormErrors>({});
   const [feedback, setFeedback] = useState<Feedback>(null);
@@ -208,7 +211,7 @@ export function OrganizationSettings({
       if (!response.ok || !payload?.settings) {
         setErrors(payload?.fieldErrors ?? {});
         setFeedback({
-          message: payload?.error ?? GENERIC_ERROR_MESSAGE,
+          message: payload?.error ?? copy.genericError,
           tone: "error",
         });
         return;
@@ -217,12 +220,12 @@ export function OrganizationSettings({
       setValues(payload.settings);
       setSavedConsentDisclosure(payload.settings.consentDisclosure);
       setEmailRevision((revision) => revision + 1);
-      setFeedback({ message: "Organization settings saved.", tone: "success" });
+      setFeedback({ message: copy.saved, tone: "success" });
       // The header and the accent color come from the layout around this
       // page, which only looks them up again when asked to.
       router.refresh();
     } catch {
-      setFeedback({ message: GENERIC_ERROR_MESSAGE, tone: "error" });
+      setFeedback({ message: copy.genericError, tone: "error" });
     } finally {
       setIsSaving(false);
     }
@@ -237,13 +240,12 @@ export function OrganizationSettings({
     >
       <div className="space-y-8">
         <div className="space-y-2">
-          <p className="section-eyebrow">Administrator</p>
+          <p className="section-eyebrow">{copy.header.eyebrow}</p>
           <h2 className="text-2xl font-extrabold tracking-[-0.03em] text-(--fg)">
-            Organization
+            {copy.header.title}
           </h2>
           <p className="max-w-2xl text-sm leading-6 text-(--secondary)">
-            These settings apply to everyone who uses this site. Only you, the
-            administrator, can see and change them.
+            {copy.header.description}
           </p>
         </div>
 
@@ -263,8 +265,8 @@ export function OrganizationSettings({
             <FieldShell
               disabled={isSaving}
               error={errors.organizationName}
-              helper="Shown in the header and in every email this site sends."
-              label="Organization name"
+              helper={copy.name.helper}
+              label={copy.name.label}
               name="organization-name"
               onChange={handleChange("organizationName")}
               readOnly={false}
@@ -288,15 +290,13 @@ export function OrganizationSettings({
 
           <fieldset className="space-y-4 border-t border-(--border) pt-8">
             <legend className="float-left mb-4 w-full text-lg font-extrabold tracking-[-0.02em] text-(--fg)">
-              Who can create an account
+              {copy.signup.legend}
             </legend>
             <p className="clear-both max-w-2xl text-sm leading-6 text-(--secondary)">
-              {values.part11Mode
-                ? "Part 11 mode is on, so this covers signers too. A Part 11 envelope goes only to someone with an account here whose identity an administrator has confirmed under People, so choose a rule that lets the people you send to create one."
-                : "This is about people who send documents. People who are sent a document to sign don't need an account."}
+              {values.part11Mode ? copy.signup.part11Note : copy.signup.note}
             </p>
             <div className="space-y-3">
-              {signupModeOptions.map((option) => (
+              {signupModeOptions(copy.signup.options).map((option) => (
                 <label
                   className="flex cursor-pointer items-start gap-3 rounded-2xl bg-(--surface) px-4 py-3.5 ring-2 ring-transparent transition has-[:checked]:bg-(--accent-softer) has-[:checked]:ring-(--accent)"
                   key={option.value}
@@ -326,11 +326,11 @@ export function OrganizationSettings({
                 <FieldShell
                   disabled={isSaving}
                   error={errors.allowedEmailDomains}
-                  helper="Separate several domains with commas."
-                  label="Email domains"
+                  helper={copy.signup.domains.helper}
+                  label={copy.signup.domains.label}
                   name="allowed-email-domains"
                   onChange={handleChange("allowedEmailDomains")}
-                  placeholder="yourcompany.com"
+                  placeholder={copy.signup.domains.placeholder}
                   readOnly={false}
                   value={values.allowedEmailDomains}
                 />
@@ -340,7 +340,7 @@ export function OrganizationSettings({
 
           <div className="space-y-5 border-t border-(--border) pt-8">
             <h3 className="text-lg font-extrabold tracking-[-0.02em] text-(--fg)">
-              Email addresses
+              {copy.addresses.title}
             </h3>
             <div className="grid gap-4 sm:grid-cols-2">
               <FieldShell
@@ -348,13 +348,13 @@ export function OrganizationSettings({
                 error={errors.senderAddress}
                 helper={
                   values.senderAddressFromEnv
-                    ? "Set by the RESEND_FROM_EMAIL environment variable."
-                    : "The address emails come from, at a domain you own. A subdomain such as notifications@sign.yourcompany.com keeps this site's mail apart from your everyday email."
+                    ? copy.addresses.sender.envHelper
+                    : copy.addresses.sender.helper
                 }
-                label="Send email from"
+                label={copy.addresses.sender.label}
                 name="sender-address"
                 onChange={handleChange("senderAddress")}
-                placeholder="sign@yourcompany.com"
+                placeholder={copy.addresses.sender.placeholder}
                 readOnly={values.senderAddressFromEnv}
                 type="email"
                 value={values.senderAddress}
@@ -364,13 +364,13 @@ export function OrganizationSettings({
                 error={errors.supportAddress}
                 helper={
                   values.supportAddressFromEnv
-                    ? "Set by the SUPPORT_EMAIL environment variable."
-                    : "Where replies and questions from signers go."
+                    ? copy.addresses.support.envHelper
+                    : copy.addresses.support.helper
                 }
-                label="Support address"
+                label={copy.addresses.support.label}
                 name="support-address"
                 onChange={handleChange("supportAddress")}
-                placeholder="help@yourcompany.com"
+                placeholder={copy.addresses.support.placeholder}
                 readOnly={values.supportAddressFromEnv}
                 type="email"
                 value={values.supportAddress}
@@ -382,45 +382,45 @@ export function OrganizationSettings({
             <div className="space-y-5 border-t border-(--border) pt-8">
               <div className="space-y-2">
                 <h3 className="text-lg font-extrabold tracking-[-0.02em] text-(--fg)">
-                  Your terms and privacy policy
+                  {copy.legalLinks.title}
                 </h3>
                 <p className="max-w-2xl text-sm leading-6 text-(--secondary)">
-                  Optional. Links to pages on your own website, shown in the
-                  footer of this site and of its emails.
+                  {copy.legalLinks.description}
                 </p>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <FieldShell
                   disabled={isSaving}
                   error={errors.termsUrl}
-                  label="Terms link"
+                  label={copy.legalLinks.terms.label}
                   name="terms-url"
                   onChange={handleChange("termsUrl")}
-                  placeholder="https://yourcompany.com/terms"
+                  placeholder={copy.legalLinks.terms.placeholder}
                   readOnly={false}
                   value={values.termsUrl}
                 />
                 <FieldShell
                   disabled={isSaving}
                   error={errors.privacyUrl}
-                  label="Privacy policy link"
+                  label={copy.legalLinks.privacy.label}
                   name="privacy-url"
                   onChange={handleChange("privacyUrl")}
-                  placeholder="https://yourcompany.com/privacy"
+                  placeholder={copy.legalLinks.privacy.placeholder}
                   readOnly={false}
                   value={values.privacyUrl}
                 />
               </div>
               <p className="max-w-2xl text-sm leading-6 text-(--secondary)">
-                Without a privacy policy link, signers see{" "}
+                {copy.legalLinks.notice.before}
                 <a
                   className="font-semibold text-(--accent-ink) underline decoration-[rgb(var(--accent-rgb)/0.35)] underline-offset-4"
                   href="/signer-privacy"
                   target="_blank"
+                  rel="noopener"
                 >
-                  a notice built from these settings
+                  {copy.legalLinks.notice.link}
                 </a>
-                . Check that it is right for your organization.
+                {copy.legalLinks.notice.after}
               </p>
             </div>
           ) : null}
@@ -429,14 +429,10 @@ export function OrganizationSettings({
             <div className="space-y-5 border-t border-(--border) pt-8">
               <div className="space-y-2">
                 <h3 className="text-lg font-extrabold tracking-[-0.02em] text-(--fg)">
-                  What signers agree to before signing
+                  {copy.disclosure.title}
                 </h3>
                 <p className="max-w-2xl text-sm leading-6 text-(--secondary)">
-                  Optional. Signers read this and tick a box to agree to use
-                  electronic records and signatures before they sign. Leave it
-                  empty to use the standard text, or press &ldquo;Start from the
-                  standard text&rdquo; to edit it. The words each signer saw are
-                  kept with their record.
+                  {copy.disclosure.description}
                 </p>
               </div>
               <Field className="gap-2 text-sm">
@@ -444,7 +440,7 @@ export function OrganizationSettings({
                   className="text-[0.8125rem] font-semibold text-(--secondary)"
                   htmlFor="consent-disclosure"
                 >
-                  Disclosure text
+                  {copy.disclosure.label}
                 </FieldLabel>
                 <Textarea
                   aria-describedby="consent-disclosure-description"
@@ -459,7 +455,7 @@ export function OrganizationSettings({
                   maxLength={6000}
                   name="consent-disclosure"
                   onChange={(event) => setConsentDisclosure(event.target.value)}
-                  placeholder="Standard text"
+                  placeholder={copy.disclosure.placeholder}
                   value={values.consentDisclosure}
                 />
                 {errors.consentDisclosure ? (
@@ -474,10 +470,7 @@ export function OrganizationSettings({
                     className="text-xs leading-5 text-(--tertiary)"
                     id="consent-disclosure-description"
                   >
-                    Separate paragraphs with a blank line. Start a line with ##
-                    and a space to make a heading. Write {"{sender}"} where the
-                    sender&apos;s name goes and {"{contact}"} where the address
-                    to write to goes.
+                    {copy.disclosure.formatHelp}
                   </FieldDescription>
                 )}
                 <p className="text-xs leading-5 text-(--secondary)">
@@ -492,7 +485,7 @@ export function OrganizationSettings({
                   }
                   variant="secondary"
                 >
-                  Start from the standard text
+                  {copy.disclosure.startFromStandard}
                 </ShellButton>
                 {values.consentDisclosure.length > 0 ? (
                   <ShellButton
@@ -500,7 +493,7 @@ export function OrganizationSettings({
                     onClick={() => setConsentDisclosure("")}
                     variant="ghost"
                   >
-                    Use the standard text
+                    {copy.disclosure.useStandard}
                   </ShellButton>
                 ) : null}
               </div>
@@ -510,14 +503,10 @@ export function OrganizationSettings({
           <div className="space-y-5 border-t border-(--border) pt-8">
             <div className="space-y-2">
               <h3 className="text-lg font-extrabold tracking-[-0.02em] text-(--fg)">
-                How long to keep finished documents
+                {copy.retention.title}
               </h3>
               <p className="max-w-2xl text-sm leading-6 text-(--secondary)">
-                Optional. After this many days a completed, declined or voided
-                envelope is deleted with its audit trail. Its sender is emailed
-                30 days before. Leave empty to keep them until someone deletes
-                them. Many records must be kept for years, so check what applies
-                to you before setting this.
+                {copy.retention.description}
               </p>
             </div>
             <div className="max-w-xs">
@@ -525,14 +514,12 @@ export function OrganizationSettings({
                 disabled={isSaving || values.part11Mode}
                 error={errors.retentionDays}
                 helper={
-                  values.part11Mode
-                    ? "Off while Part 11 mode is on: those records are deleted by hand only."
-                    : undefined
+                  values.part11Mode ? copy.retention.part11Helper : undefined
                 }
-                label="Days to keep"
+                label={copy.retention.label}
                 name="retention-days"
                 onChange={handleChange("retentionDays")}
-                placeholder="Keep until deleted"
+                placeholder={copy.retention.placeholder}
                 readOnly={false}
                 value={values.retentionDays}
               />
@@ -540,7 +527,7 @@ export function OrganizationSettings({
           </div>
 
           <ShellButton className="w-fit" loading={isSaving} type="submit">
-            {isSaving ? "Saving..." : "Save organization settings"}
+            {isSaving ? copy.save.saving : copy.save.label}
           </ShellButton>
         </form>
 
@@ -579,7 +566,7 @@ export function OrganizationSettings({
                   onClick={() => setIsDisclosureNoticeOpen(false)}
                   variant="secondary"
                 >
-                  Cancel
+                  {copy.disclosure.cancel}
                 </ShellButton>
                 <ShellButton onClick={() => void saveSettings(true)}>
                   {CUSTOM_DISCLOSURE_NOTICE.agree}
@@ -621,18 +608,21 @@ export function OrganizationSettings({
 
 async function fetchEmailStatus(
   signal: AbortSignal,
+  fallback: string,
 ): Promise<{ error: string; status: null } | { status: EmailStatus }> {
   const response = await fetch("/api/admin/email", { signal });
   const payload = (await response.json().catch(() => null)) as EmailResponse;
 
   if (!response.ok || !payload?.status) {
-    return { error: payload?.error ?? GENERIC_ERROR_MESSAGE, status: null };
+    return { error: payload?.error ?? fallback, status: null };
   }
 
   return { status: payload.status };
 }
 
 function EmailSetupPanel() {
+  const organizationCopy = useMessages().messages.settings.organization;
+  const copy = organizationCopy.email;
   const [status, setStatus] = useState<EmailStatus | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [pendingAction, setPendingAction] = useState<EmailAction | null>(null);
@@ -641,7 +631,7 @@ function EmailSetupPanel() {
   useEffect(() => {
     const controller = new AbortController();
 
-    fetchEmailStatus(controller.signal)
+    fetchEmailStatus(controller.signal, organizationCopy.genericError)
       .then((result) => {
         if (result.status) {
           setLoadError(null);
@@ -653,7 +643,7 @@ function EmailSetupPanel() {
       .catch((error: unknown) => {
         // Leaving the page cancels the request; that is not a failure.
         if (!(error instanceof DOMException && error.name === "AbortError")) {
-          setLoadError(GENERIC_ERROR_MESSAGE);
+          setLoadError(organizationCopy.genericError);
         }
       });
 
@@ -687,22 +677,22 @@ function EmailSetupPanel() {
         setTestResult(
           payload.test.sent
             ? {
-                message: `Test email sent to ${payload.test.to}. Check that inbox.`,
+                message: formatMessage(copy.testSent, { to: payload.test.to }),
                 tone: "success",
               }
             : { message: payload.test.message, tone: "error" },
         );
       } else if (!response.ok) {
-        setLoadError(payload?.error ?? GENERIC_ERROR_MESSAGE);
+        setLoadError(payload?.error ?? organizationCopy.genericError);
       }
     } catch {
-      setLoadError(GENERIC_ERROR_MESSAGE);
+      setLoadError(organizationCopy.genericError);
     } finally {
       setPendingAction(null);
     }
   }
 
-  const summary = status ? describeEmailStatus(status) : null;
+  const summary = status ? describeEmailStatus(status, copy) : null;
   const canSendTest =
     status !== null &&
     status.state !== "missing_key" &&
@@ -711,7 +701,7 @@ function EmailSetupPanel() {
   return (
     <div className="space-y-5 border-t border-(--border) pt-8" id="email-setup">
       <h3 className="text-lg font-extrabold tracking-[-0.02em] text-(--fg)">
-        Email setup
+        {copy.title}
       </h3>
 
       {loadError ? (
@@ -722,7 +712,7 @@ function EmailSetupPanel() {
 
       {!summary ? (
         loadError ? null : (
-          <p className="text-sm text-(--secondary)">Checking email…</p>
+          <p className="text-sm text-(--secondary)">{copy.checkingEmail}</p>
         )
       ) : (
         <div
@@ -774,8 +764,8 @@ function EmailSetupPanel() {
             onClick={() => void runAction("add_domain")}
           >
             {pendingAction === "add_domain"
-              ? "Adding..."
-              : `Set up ${status.domain}`}
+              ? copy.adding
+              : formatMessage(copy.setUp, { domain: status.domain })}
           </ShellButton>
         ) : null}
         {status?.state === "domain_pending" ? (
@@ -784,7 +774,7 @@ function EmailSetupPanel() {
             loading={pendingAction === "recheck"}
             onClick={() => void runAction("recheck")}
           >
-            {pendingAction === "recheck" ? "Checking..." : "Check DNS records"}
+            {pendingAction === "recheck" ? copy.checking : copy.checkRecords}
           </ShellButton>
         ) : null}
         {canSendTest ? (
@@ -794,16 +784,14 @@ function EmailSetupPanel() {
             onClick={() => void runAction("send_test")}
             variant="secondary"
           >
-            {pendingAction === "send_test"
-              ? "Sending..."
-              : "Send me a test email"}
+            {pendingAction === "send_test" ? copy.sending : copy.sendTest}
           </ShellButton>
         ) : null}
         {status?.state === "restricted_key" ||
         status?.state === "error" ||
         status?.state === "test_sender" ? (
           <ShellButton href={RESEND_DOMAINS_URL} variant="ghost">
-            Open Resend
+            {copy.openResend}
           </ShellButton>
         ) : null}
       </div>
@@ -827,7 +815,10 @@ type EmailStep = {
   text: string;
 };
 
-function describeEmailStatus(status: EmailStatus): {
+function describeEmailStatus(
+  status: EmailStatus,
+  copy: OrganizationCopy["email"],
+): {
   lines: string[];
   ready: boolean;
   steps?: EmailStep[];
@@ -836,113 +827,120 @@ function describeEmailStatus(status: EmailStatus): {
   switch (status.state) {
     case "capture":
       return {
-        lines: [
-          "This is a development setup. Emails are saved to a folder on this machine instead of being sent.",
-        ],
+        lines: [copy.states.capture.line],
         ready: true,
-        title: "Emails are being captured, not sent",
+        title: copy.states.capture.title,
       };
     case "missing_key":
       return status.onVercel
         ? {
-            lines: [
-              "This site has no Resend API key, so it cannot send anything: no sign-up confirmations and no signing invitations.",
-            ],
+            lines: [copy.states.missingKey.line],
             ready: false,
             steps: [
               {
                 link: {
                   href: RESEND_MARKETPLACE_URL,
-                  label: "Resend on the Vercel Marketplace",
+                  label: copy.states.missingKey.steps.marketplace.label,
                 },
-                text: "Open Resend on the Vercel Marketplace. Choose Install (or Connect Project if your team already has Resend) and connect it to this project.",
+                text: copy.states.missingKey.steps.marketplace.text,
               },
               {
-                text: "In this project on Vercel, open Settings, then Environment Variables, and check that RESEND_API_KEY is listed for Production.",
+                text: copy.states.missingKey.steps.variable,
               },
               {
-                text: "Open Deployments, open the ••• menu on the latest Production deployment and choose Redeploy. Environment variables only reach deployments made after they were added, so a site deployed before Resend was connected still has no key until it is redeployed.",
+                text: copy.states.missingKey.steps.redeploy,
               },
               {
-                text: "When the new deployment is ready, reload this page.",
+                text: copy.states.missingKey.steps.reload,
               },
             ],
-            title: "Email is not connected",
+            title: copy.states.missingKey.title,
           }
         : {
-            lines: [
-              "This site has no Resend API key, so it cannot send anything: no sign-up confirmations and no signing invitations.",
-            ],
+            lines: [copy.states.missingKey.line],
             ready: false,
             steps: [
               {
                 link: {
                   href: "https://resend.com/api-keys",
-                  label: "Resend API keys",
+                  label: copy.states.missingKey.steps.resendKeys.label,
                 },
-                text: "Create an API key in Resend with full access, so this page can add your domain and check its DNS records.",
+                text: copy.states.missingKey.steps.resendKeys.text,
               },
               {
-                text: "Set it as the RESEND_API_KEY environment variable where this site runs.",
+                text: copy.states.missingKey.steps.variableNonVercel,
               },
-              { text: "Restart the app, then reload this page." },
+              { text: copy.states.missingKey.steps.restart },
             ],
-            title: "Email is not connected",
+            title: copy.states.missingKey.title,
           };
     case "test_sender":
       return {
         lines: [
-          `Emails are going out from Resend's shared test address (${status.senderAddress}). Resend only delivers those to the owner of the Resend account, so signers and new users will not receive anything yet.`,
-          'Enter an address at your own domain in "Send email from" above and save. The DNS records to add will appear here.',
+          formatMessage(copy.states.testSender.firstLine, {
+            senderAddress: status.senderAddress,
+          }),
+          copy.states.testSender.secondLine,
         ],
         ready: false,
-        title: "Email only reaches you so far",
+        title: copy.states.testSender.title,
       };
     case "domain_missing":
       return {
         lines: [
-          `${status.domain} has not been added to your Resend account yet. Set it up here to get the DNS records that prove you own it.`,
+          formatMessage(copy.states.domainMissing.line, {
+            domain: status.domain,
+          }),
         ],
         ready: false,
-        title: `${status.domain} needs to be set up`,
+        title: formatMessage(copy.states.domainMissing.title, {
+          domain: status.domain,
+        }),
       };
     case "domain_pending":
       return {
         lines: [
-          `Add these records where ${status.domain}'s DNS is managed, then check them. DNS changes can take a few minutes to be seen, and sometimes longer.`,
+          formatMessage(copy.states.domainPending.line, {
+            domain: status.domain,
+          }),
           ...(status.mayAlreadySend
-            ? [
-                "Resend has verified part of this domain, so sending may already work. Send yourself a test email to find out. If it arrives, email is working.",
-              ]
+            ? [copy.states.domainPending.mayAlreadySend]
             : []),
         ],
         ready: false,
-        title: `Waiting for ${status.domain}'s DNS records`,
+        title: formatMessage(copy.states.domainPending.title, {
+          domain: status.domain,
+        }),
       };
     case "restricted_key":
       return {
         lines: [
-          `This site's Resend key is only allowed to send email, so it cannot check ${status.domain} from here. Open Resend to add the domain and see its DNS records.`,
-          "When that is done, send yourself a test email. If it arrives, email is working.",
+          formatMessage(copy.states.restrictedKey.line, {
+            domain: status.domain,
+          }),
+          copy.states.restrictedKey.secondLine,
         ],
         ready: false,
-        title: "Finish the domain in Resend",
+        title: copy.states.restrictedKey.title,
       };
     case "ready":
       return {
         lines: [
-          `Emails are sent from ${status.senderAddress}, and ${status.domain} is verified.`,
+          formatMessage(copy.states.ready.line, {
+            senderAddress: status.senderAddress,
+            domain: status.domain,
+          }),
         ],
         ready: true,
-        title: "Email is working",
+        title: copy.states.ready.title,
       };
     case "error":
       return {
         lines: [
-          `Resend could not be asked about this site's email: ${status.message}`,
+          formatMessage(copy.states.error.line, { message: status.message }),
         ],
         ready: false,
-        title: "Email could not be checked",
+        title: copy.states.error.title,
       };
   }
 }
@@ -954,10 +952,12 @@ function DnsRecordsTable({
   domain: string;
   records: readonly EmailDnsRecord[];
 }) {
+  const copy = useMessages().messages.settings.organization.email.dns;
+
   if (records.length === 0) {
     return (
       <p className="text-sm leading-6 text-(--secondary)">
-        Resend did not list any records for {domain}. Open Resend to see them.
+        {formatMessage(copy.empty, { domain })}
       </p>
     );
   }
@@ -965,20 +965,22 @@ function DnsRecordsTable({
   return (
     <div className="overflow-x-auto rounded-2xl border border-(--border)">
       <table className="w-full min-w-[640px] border-collapse text-left text-sm">
-        <caption className="sr-only">DNS records to add for {domain}</caption>
+        <caption className="sr-only">
+          {formatMessage(copy.caption, { domain })}
+        </caption>
         <thead>
           <tr className="border-b border-(--border) bg-(--surface) text-xs text-(--tertiary)">
             <th className="px-4 py-3 font-semibold" scope="col">
-              Type
+              {copy.type}
             </th>
             <th className="px-4 py-3 font-semibold" scope="col">
-              Name
+              {copy.name}
             </th>
             <th className="px-4 py-3 font-semibold" scope="col">
-              Value
+              {copy.value}
             </th>
             <th className="px-4 py-3 font-semibold" scope="col">
-              Status
+              {copy.status}
             </th>
           </tr>
         </thead>
@@ -992,7 +994,9 @@ function DnsRecordsTable({
                 {record.type}
                 {record.priority !== null ? (
                   <span className="block text-xs font-normal text-(--tertiary)">
-                    Priority {record.priority}
+                    {formatMessage(copy.priority, {
+                      priority: record.priority,
+                    })}
                   </span>
                 ) : null}
               </td>
@@ -1003,7 +1007,7 @@ function DnsRecordsTable({
                 {record.value}
               </td>
               <td className="px-4 py-3 text-(--secondary)">
-                {record.status === "verified" ? "Found" : "Not found yet"}
+                {record.status === "verified" ? copy.found : copy.notFound}
               </td>
             </tr>
           ))}

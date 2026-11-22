@@ -1,8 +1,8 @@
 import {
   concatTransformationMatrix,
+  type PDFPage,
   popGraphicsState,
   pushGraphicsState,
-  type PDFPage,
 } from "pdf-lib";
 
 // Where a page's content is, as a reader shows it.

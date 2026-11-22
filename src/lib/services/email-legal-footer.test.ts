@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { HOSTED_BRANDING, type Branding } from "../branding.ts";
+import { type Branding, HOSTED_BRANDING } from "../branding.ts";
 import { withUserEmailLegalFooter } from "./email-legal-footer.ts";
 
 const env = { APP_URL: "https://sign.acme.com" };
@@ -10,6 +10,7 @@ const body = { htmlBody: "<p>Hello</p>", textBody: "Hello" };
 const neutral: Branding = {
   brandColor: null,
   contactUrl: null,
+  emailLogoUrl: null,
   hosted: false,
   logoUrl: null,
   organizationName: "Acme Corp",
@@ -56,7 +57,7 @@ test("a neutral install with nothing else set links its signer privacy notice an
       "Privacy notice:",
       "https://sign.acme.com/signer-privacy",
       "",
-      "Sent by Acme Corp using SignuDoc.",
+      "Sent by Acme Corp using Sakta.",
     ].join("\n"),
   );
 });
@@ -86,7 +87,7 @@ test("a neutral install links to the organization's own pages and support addres
       "",
       "Questions? Contact help@acme.com.",
       "",
-      "Sent by Acme Corp using SignuDoc.",
+      "Sent by Acme Corp using Sakta.",
     ].join("\n"),
   );
   assert.match(
@@ -98,11 +99,11 @@ test("a neutral install links to the organization's own pages and support addres
 test("an install that has not been named yet does not invent a name", () => {
   const result = withUserEmailLegalFooter(
     body,
-    { ...neutral, organizationName: null, productName: "SignuDoc" },
+    { ...neutral, organizationName: null, productName: "Sakta" },
     env,
   );
 
-  assert.match(result.textBody, /\n\nSent using SignuDoc\.$/);
+  assert.match(result.textBody, /\n\nSent using Sakta\.$/);
   assert.doesNotMatch(result.textBody, /Acme/);
 });
 
@@ -121,7 +122,7 @@ test("the organization's name and links are escaped in the HTML part", () => {
   assert.doesNotMatch(result.htmlBody, /<Finch>/);
   assert.doesNotMatch(result.htmlBody, /b="2"/);
   // The plain-text part is not HTML and carries the name as it is.
-  assert.match(result.textBody, /Sent by Harbour & <Finch> using SignuDoc\./);
+  assert.match(result.textBody, /Sent by Harbour & <Finch> using Sakta\./);
 });
 
 test("a neutral install with no links does not need to know its own URL", () => {
@@ -146,6 +147,17 @@ test("an install with a logo puts it at the top of the HTML part only", () => {
   );
   assert.ok(result.htmlBody.includes("<p>Hello</p>"));
   assert.doesNotMatch(result.textBody, /logo/);
+});
+
+test("the hosted service sends its PNG logo, not the web SVG", () => {
+  const result = withUserEmailLegalFooter(body, HOSTED_BRANDING, env);
+
+  assert.ok(
+    result.htmlBody.includes(
+      '<img src="https://sign.acme.com/img/logo.png" alt="Sakta"',
+    ),
+  );
+  assert.doesNotMatch(result.htmlBody, /logo\.svg/);
 });
 
 test("without the site's address there is nowhere to fetch a logo from", () => {

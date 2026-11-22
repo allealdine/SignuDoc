@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { type FormEvent, useState } from "react";
 
 import { getSignerPalette } from "@/components/envelopes/signer-palette";
 import { ShellButton } from "@/components/shared/form-shell";

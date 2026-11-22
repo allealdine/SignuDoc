@@ -1,7 +1,5 @@
 import Link from "next/link";
-import { useId, type ChangeEventHandler, type ReactNode } from "react";
-
-import { cn } from "@/lib/cn";
+import { type ChangeEventHandler, type ReactNode, useId } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Field,
@@ -10,6 +8,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/cn";
 
 type FieldShellProps = {
   autoComplete?: string;

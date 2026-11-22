@@ -1,13 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-
+import { MAX_SIGNERS_CEILING } from "../types/domain.ts";
 import {
   duplicateRoleNameMessage,
   saveTemplateSchema,
   templateRolesSchema,
   useTemplateSchema,
 } from "./template.ts";
-import { MAX_SIGNERS_CEILING } from "../types/domain.ts";
 
 test("a template needs a name, and its signers need different names", () => {
   assert.deepEqual(saveTemplateSchema.parse({ name: " Lease " }), {

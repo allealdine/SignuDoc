@@ -4,10 +4,10 @@ import { waitUntil } from "@vercel/functions";
 
 import { getApiEnvelopeWithOwner } from "../api/envelope-view.ts";
 import {
+  type DbExecutor,
   getDb,
   queryMany,
   queryOne,
-  type DbExecutor,
 } from "../db/connection.ts";
 import { isMissingSchemaError } from "../settings.ts";
 import type { EnvSource } from "../utils/env.ts";
@@ -556,7 +556,7 @@ export async function sendTestWebhook(
   const now = nowInSeconds();
   const id = `msg_${randomUUID().replaceAll("-", "")}`;
   const payload: WebhookPayload = {
-    data: { message: "A test event from SignuDoc. No envelope changed." },
+    data: { message: "A test event from Sakta. No envelope changed." },
     timestamp: new Date(now * 1000).toISOString(),
     type: WEBHOOK_TEST_EVENT,
   };

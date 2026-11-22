@@ -1,154 +1,113 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import type { ReactNode } from "react";
 
+import { LegalContactParagraph } from "@/components/layout/legal-contact-paragraph";
 import { PublicDocumentShell } from "@/components/layout/public-document-shell";
 import { requireHostedMode } from "@/lib/hosted-pages";
+import { getMessages } from "@/lib/i18n/messages.ts";
+import { getRequestLocale } from "@/lib/i18n/request.ts";
+import {
+  ACCESSIBILITY_EFFECTIVE_DATE,
+  formatLegalDate,
+} from "@/lib/legal-date.ts";
 import { resolvePublicSupportAddress } from "@/lib/public-contact";
 
-export const metadata: Metadata = {
-  description:
-    "Read SignuDoc's accessibility statement, current accessibility features, known limitations, and how to request assistance.",
-  title: "Accessibility Statement | SignuDoc",
-};
+// Indonesian-facing draft. The statement describes the product honestly
+// rather than claiming WCAG conformance; it references UU No. 8 of 2016 on
+// persons with disabilities. Indonesian counsel and a native speaker should
+// review it before release. This is product copy, not legal advice.
+
+const headingClassName =
+  "text-xl font-extrabold tracking-[-0.02em] text-(--fg)";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const copy = getMessages(await getRequestLocale()).legal.accessibility
+    .metadata;
+
+  return {
+    description: copy.description,
+    title: copy.title,
+  };
+}
 
 export default async function AccessibilityPage() {
   await requireHostedMode();
 
-  const supportAddress = await resolvePublicSupportAddress();
+  const [supportAddress, locale] = await Promise.all([
+    resolvePublicSupportAddress(),
+    getRequestLocale(),
+  ]);
+  const messages = getMessages(locale);
+  const copy = messages.legal.accessibility;
+  const sections = copy.sections;
 
   return (
     <PublicDocumentShell
-      description="SignuDoc is committed to improving accessibility for people with disabilities. This statement describes what is currently supported, the known limitations in our launch-stage product, and how to request assistance or accommodation."
-      lastUpdated="March 25, 2026"
-      title="Accessibility Statement"
+      description={copy.hero.description}
+      lastUpdated={formatLegalDate(ACCESSIBILITY_EFFECTIVE_DATE, locale)}
+      title={copy.hero.title}
     >
-      <section className="space-y-3">
-        <h2 className="text-xl font-extrabold tracking-[-0.02em] text-(--fg)">
-          Commitment
-        </h2>
-        <p>
-          We want SignuDoc to be usable by as many people as possible, including
-          people who rely on keyboard navigation, screen readers, zoom, or other
-          assistive technologies. We use accessibility best practices and treat
-          accessibility feedback as a product priority.
-        </p>
-        <p>
-          SignuDoc is still a launch-stage product, and some parts of the
-          experience are more accessible than others. This statement is intended
-          to be candid about the current state of the product and the help that
-          is available right now.
-        </p>
-      </section>
+      <Section heading={sections.commitment.heading}>
+        <Paragraphs items={sections.commitment.paragraphs} />
+      </Section>
 
-      <section className="space-y-4">
-        <h2 className="text-xl font-extrabold tracking-[-0.02em] text-(--fg)">
-          What currently works best
-        </h2>
-        <ul className="list-disc space-y-2 pl-6">
-          <li>
-            Account creation, log in, dashboard, settings, and most non-canvas
-            forms use semantic controls and are intended to be keyboard
-            navigable.
-          </li>
-          <li>
-            The signing experience uses keyboard-focusable HTML inputs and
-            buttons layered over the PDF preview, and includes a sidebar summary
-            of assigned fields.
-          </li>
-          <li>
-            Status messages, buttons, and form labels are designed to expose
-            meaningful text to assistive technology.
-          </li>
-        </ul>
-      </section>
+      <Section heading={sections.works.heading}>
+        <Bullets items={sections.works.items} />
+      </Section>
 
-      <section className="space-y-4">
-        <h2 className="text-xl font-extrabold tracking-[-0.02em] text-(--fg)">
-          Known limitations
-        </h2>
-        <ul className="list-disc space-y-2 pl-6">
-          <li>
-            The PDF preview is rendered on a canvas and is therefore not a fully
-            semantic representation of the source document for screen readers.
-          </li>
-          <li>
-            Sender-side document preparation currently relies heavily on
-            drag-and-drop and pointer-based field placement, which is not yet a
-            fully accessible workflow for blind users or some keyboard-only
-            users.
-          </li>
-          <li>
-            Some uploaded PDFs may contain scanned images, complex layouts, or
-            third-party accessibility issues that SignuDoc cannot fully correct
-            at display time.
-          </li>
-        </ul>
-      </section>
+      <Section heading={sections.limitations.heading}>
+        <Bullets items={sections.limitations.items} />
+      </Section>
 
-      <section className="space-y-3">
-        <h2 className="text-xl font-extrabold tracking-[-0.02em] text-(--fg)">
-          Alternative assistance
-        </h2>
-        <p>
-          If you need help creating, sending, reviewing, or signing a document,
-          email{" "}
-          <Link
-            className="font-semibold text-(--accent-ink) underline decoration-[rgb(var(--accent-rgb)/0.35)] underline-offset-4"
-            href={`mailto:${supportAddress}`}
-          >
-            {supportAddress}
-          </Link>
-          . Tell us what part of the workflow you are trying to complete, what
-          assistive technology you use if you are comfortable sharing it, and
-          what kind of accommodation would help.
-        </p>
-        <p>
-          Depending on the situation, we may be able to provide manual
-          assistance, an alternative communication path, or another supported
-          way to complete the workflow.
-        </p>
-      </section>
+      <Section heading={sections.assistance.heading}>
+        <LegalContactParagraph
+          contactLabel={messages.footer.contact}
+          supportAddress={supportAddress}
+          template={sections.assistance.requestWithSupport}
+        />
+        <Paragraphs items={sections.assistance.paragraphs} />
+      </Section>
 
-      <section className="space-y-3">
-        <h2 className="text-xl font-extrabold tracking-[-0.02em] text-(--fg)">
-          Standards and ongoing work
-        </h2>
-        <p>
-          We use WCAG 2.2 Level AA as a practical reference point when planning
-          improvements, but we do not claim that every part of SignuDoc fully
-          conforms today.
-        </p>
-        <p>
-          Our near-term focus includes improving the accessibility of the
-          canvas-based PDF experience, strengthening modal focus behavior,
-          reducing pointer-only interactions, and continuing to expand
-          keyboard-friendly alternatives.
-        </p>
-      </section>
+      <Section heading={sections.standards.heading}>
+        <Paragraphs items={sections.standards.paragraphs} />
+      </Section>
 
-      <section className="space-y-3">
-        <h2 className="text-xl font-extrabold tracking-[-0.02em] text-(--fg)">
-          Feedback
-        </h2>
-        <p>
-          Accessibility feedback helps us prioritize the right fixes. If you
-          find a barrier, email{" "}
-          <Link
-            className="font-semibold text-(--accent-ink) underline decoration-[rgb(var(--accent-rgb)/0.35)] underline-offset-4"
-            href={`mailto:${supportAddress}`}
-          >
-            {supportAddress}
-          </Link>{" "}
-          or use the{" "}
-          <Link
-            className="font-semibold text-(--accent-ink) underline decoration-[rgb(var(--accent-rgb)/0.35)] underline-offset-4"
-            href="/contact"
-          >
-            Contact
-          </Link>{" "}
-          page.
-        </p>
-      </section>
+      <Section heading={sections.feedback.heading}>
+        <LegalContactParagraph
+          contactLabel={messages.footer.contact}
+          supportAddress={supportAddress}
+          template={sections.feedback.contactWithSupport}
+        />
+      </Section>
     </PublicDocumentShell>
+  );
+}
+
+function Section({
+  children,
+  heading,
+}: {
+  children: ReactNode;
+  heading: string;
+}) {
+  return (
+    <section className="space-y-3">
+      <h2 className={headingClassName}>{heading}</h2>
+      {children}
+    </section>
+  );
+}
+
+function Paragraphs({ items }: { items: readonly string[] }) {
+  return items.map((item) => <p key={item}>{item}</p>);
+}
+
+function Bullets({ items }: { items: readonly string[] }) {
+  return (
+    <ul className="list-disc space-y-2 pl-6">
+      {items.map((item) => (
+        <li key={item}>{item}</li>
+      ))}
+    </ul>
   );
 }

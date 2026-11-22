@@ -5,7 +5,6 @@ import { after, before, test } from "node:test";
 import type pg from "pg";
 
 import { openTestDatabase } from "./db/test-database.ts";
-import { eraseSignerData } from "./signer-data.ts";
 import {
   checkSigningCredentials,
   MAX_SIGNING_PASSWORD_ATTEMPTS,
@@ -20,6 +19,7 @@ import {
   recordSystemAuditEvent,
   verifySystemAuditChain,
 } from "./services/system-audit.ts";
+import { eraseSignerData } from "./signer-data.ts";
 
 // Part 11 mode against a real Postgres: the install audit chain and the
 // password check at signing, with its lock after five wrong passwords.

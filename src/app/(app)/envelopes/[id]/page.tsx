@@ -1,6 +1,6 @@
 import {
-  EnvelopeDetailShell,
   type EnvelopeDeletionNotice,
+  EnvelopeDetailShell,
 } from "@/components/envelopes/envelope-detail-shell";
 import { isAdminUser } from "@/lib/auth/admin";
 import { getAuthSession } from "@/lib/auth/server";

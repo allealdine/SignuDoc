@@ -1,10 +1,10 @@
 import {
   constants,
   createHash,
-  verify as verifySignature,
   type KeyObject,
+  verify as verifySignature,
 } from "node:crypto";
-
+import { namesMatch } from "../name-match.ts";
 import {
   algorithm,
   children,
@@ -19,8 +19,7 @@ import {
   TAG,
   type Tlv,
 } from "./der.ts";
-import { parseCertificate, type Certificate } from "./pdf-ltv.ts";
-import { namesMatch } from "../name-match.ts";
+import { type Certificate, parseCertificate } from "./pdf-ltv.ts";
 
 // The CMS of one signer's own signature (CAdES, as PAdES uses it).
 //

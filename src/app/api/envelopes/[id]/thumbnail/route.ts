@@ -2,18 +2,18 @@ import { NextResponse } from "next/server";
 
 import { requireVerifiedSenderSession } from "@/lib/auth/route-session";
 import { getDb } from "@/lib/db/connection";
+import { resolveEnvelopeViewerAccess } from "@/lib/envelope-access";
 import {
   EnvelopeDocumentAccessError,
   getEnvelopeThumbnailForUser,
   saveEnvelopeThumbnailForUser,
 } from "@/lib/envelopes";
-import { resolveEnvelopeViewerAccess } from "@/lib/envelope-access";
 import { logRouteError } from "@/lib/security/logging";
+import { getClientIpAddress, getRequestPathname } from "@/lib/security/request";
 import {
   applyRateLimit,
   buildRateLimitKey,
 } from "@/lib/security/route-controls";
-import { getClientIpAddress, getRequestPathname } from "@/lib/security/request";
 import {
   THUMBNAIL_CONTENT_TYPE,
   THUMBNAIL_MAX_BYTES,

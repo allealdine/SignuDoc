@@ -1,9 +1,9 @@
 import { createHmac } from "node:crypto";
 
 import {
+  resolveDatabaseUrl as findDatabaseUrl,
   normalizeDatabaseUrl,
   readDatabasePassword,
-  resolveDatabaseUrl as findDatabaseUrl,
 } from "../../../db/database-url.mjs";
 
 export type EnvSource = Readonly<Record<string, string | undefined>>;

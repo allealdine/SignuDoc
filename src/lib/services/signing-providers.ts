@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 
-import { readEnv, type EnvSource } from "../utils/env.ts";
+import { type EnvSource, readEnv } from "../utils/env.ts";
 import { parseCertificate } from "./pdf-ltv.ts";
 import {
   assembleSignedData,
@@ -9,8 +9,8 @@ import {
   ecdsaSignatureAsDer,
   hasEcKey,
   isQualifiedSignatureCertificate,
-  signatureAlgorithmFor,
   type SignatureLevel,
+  signatureAlgorithmFor,
 } from "./signer-cms.ts";
 
 // Signing providers: the trust service that signs for a signer with a

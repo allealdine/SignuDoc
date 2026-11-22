@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { getDb, type DbExecutor, type DbPool } from "../db/connection.ts";
+import { type DbExecutor, type DbPool, getDb } from "../db/connection.ts";
 import {
   createDraftEnvelope,
   deleteDraftEnvelope,
@@ -34,6 +34,8 @@ export const MAX_API_METADATA_BYTES = 2048;
 export const MAX_API_FIELDS = 500;
 
 export {
+  type ApiEnvelope,
+  type ApiSigner,
   apiListQuerySchema,
   decodeCursor,
   encodeCursor,
@@ -41,10 +43,9 @@ export {
   listApiEnvelopeEvents,
   listApiEnvelopes,
   toApiEnvelope,
-  type ApiEnvelope,
-  type ApiSigner,
 } from "./envelope-view.ts";
-import { getApiEnvelope, type ApiEnvelope } from "./envelope-view.ts";
+
+import { type ApiEnvelope, getApiEnvelope } from "./envelope-view.ts";
 
 const refSchema = z
   .string()

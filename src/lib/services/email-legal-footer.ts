@@ -1,5 +1,8 @@
-import { SIGNUDOC_NAME, type Branding } from "../branding.ts";
-import { getEnv, type EnvSource } from "../utils/env.ts";
+import { type Branding, SIGNUDOC_NAME } from "../branding.ts";
+import { formatMessage } from "../i18n/format.ts";
+import { getMessages } from "../i18n/messages.ts";
+import type { Locale } from "../i18n/types.ts";
+import { type EnvSource, getEnv } from "../utils/env.ts";
 import { escapeHtml } from "../utils/html.ts";
 import { requireConfigValue } from "./service-config.ts";
 
@@ -15,15 +18,20 @@ type FooterLink = {
 
 // Links may be pages on this site ("/terms") or the organization's own
 // absolute URLs. Either way the email gets an absolute URL.
-function buildFooterLinks(branding: Branding, env: EnvSource): FooterLink[] {
+function buildFooterLinks(
+  branding: Branding,
+  env: EnvSource,
+  locale: Locale,
+): FooterLink[] {
+  const labels = getMessages(locale).email.legalFooter;
   const candidates: Array<[label: string, url: string | null]> = [
-    ["Terms of Service", branding.termsUrl],
+    [labels.terms, branding.termsUrl],
     // Without the organization's own policy, the notice built from the
     // install's settings.
     branding.privacyUrl || branding.hosted
-      ? ["Privacy Policy", branding.privacyUrl]
-      : ["Privacy notice", getEnv(env).appUrl ? "/signer-privacy" : null],
-    ["Contact", branding.contactUrl],
+      ? [labels.privacyPolicy, branding.privacyUrl]
+      : [labels.privacyNotice, getEnv(env).appUrl ? "/signer-privacy" : null],
+    [labels.contact, branding.contactUrl],
   ];
   const links = candidates.filter((candidate): candidate is [string, string] =>
     Boolean(candidate[1]),
@@ -45,6 +53,7 @@ function buildFooterLinks(branding: Branding, env: EnvSource): FooterLink[] {
  * The install's logo for the top of an email, or nothing when it has none.
  * Email programs fetch it from this site, so it needs the site's address;
  * many hide pictures until asked, which is why the name is the alt text.
+ * The hosted service supplies a PNG here while its web header uses SVG.
  */
 function buildLogoHeader(branding: Branding, env: EnvSource): string {
   const appUrl = getEnv(env).appUrl;
@@ -53,7 +62,10 @@ function buildLogoHeader(branding: Branding, env: EnvSource): string {
     return "";
   }
 
-  const source = new URL(branding.logoUrl, appUrl).toString();
+  const source = new URL(
+    branding.emailLogoUrl ?? branding.logoUrl,
+    appUrl,
+  ).toString();
 
   return [
     '<p style="margin:0 0 24px;">',
@@ -74,8 +86,10 @@ export function withUserEmailLegalFooter(
   input: EmailBodyContent,
   branding: Branding,
   env: EnvSource = process.env,
+  locale: Locale = "en",
 ): EmailBodyContent {
-  const links = buildFooterLinks(branding, env);
+  const labels = getMessages(locale).email.legalFooter;
+  const links = buildFooterLinks(branding, env, locale);
   const logoHeader = buildLogoHeader(branding, env);
   const textLines: string[] = [];
   const htmlLines: string[] = [];
@@ -87,15 +101,25 @@ export function withUserEmailLegalFooter(
 
   if (!branding.hosted) {
     if (branding.supportAddress) {
-      textLines.push("", `Questions? Contact ${branding.supportAddress}.`);
-      htmlLines.push(
-        `Questions? Contact <a href="mailto:${escapeHtml(branding.supportAddress)}">${escapeHtml(branding.supportAddress)}</a>.`,
+      textLines.push(
+        "",
+        formatMessage(labels.questions, {
+          supportAddress: branding.supportAddress,
+        }),
       );
+      const questions = formatMessage(labels.questions, {
+        supportAddress: `<a href="mailto:${escapeHtml(branding.supportAddress)}">${escapeHtml(branding.supportAddress)}</a>`,
+      });
+      htmlLines.push(questions);
     }
 
-    const sentBy = branding.organizationName
-      ? `Sent by ${branding.organizationName} using ${SIGNUDOC_NAME}.`
-      : `Sent using ${SIGNUDOC_NAME}.`;
+    const sentBy = formatMessage(
+      branding.organizationName ? labels.sentByOrganization : labels.sentBy,
+      {
+        organizationName: branding.organizationName ?? "",
+        productName: SIGNUDOC_NAME,
+      },
+    );
 
     textLines.push("", sentBy);
     htmlLines.push(escapeHtml(sentBy));

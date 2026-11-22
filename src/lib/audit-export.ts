@@ -4,6 +4,7 @@ import {
   queryMany,
   queryOne,
 } from "./db/connection.ts";
+import { sanitizeFileNameSegment } from "./downloads.ts";
 import {
   describeSignerCorrectedEvent,
   verifyAuditChain,
@@ -12,7 +13,6 @@ import {
   listSystemAuditEventsBetween,
   verifySystemAuditChain,
 } from "./services/system-audit.ts";
-import { sanitizeFileNameSegment } from "./downloads.ts";
 
 // Audit trails as CSV, for an inspector or a records review (21 CFR
 // 11.10(b): accurate and complete copies in a form people can read and a

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-import { getDb, type DbExecutor } from "../db/connection.ts";
+import { type DbExecutor, getDb } from "../db/connection.ts";
 
 // Rate limits are counted in Postgres, in the rate_limits table: on Vercel
 // the app runs as many short-lived instances, and a count kept in one of

@@ -3,8 +3,8 @@ import pg from "pg";
 import { runMigrations } from "../../../db/migrate.mjs";
 import {
   lockEnvelopeAuditChain,
-  recordAuditEvent,
   type RecordAuditEventInput,
+  recordAuditEvent,
 } from "../services/audit.ts";
 
 // For the tests that need a real Postgres (npm run test:db). They use the

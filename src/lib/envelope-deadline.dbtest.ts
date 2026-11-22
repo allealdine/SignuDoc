@@ -13,6 +13,7 @@ import {
   openTestDatabase,
   recordAuditEventWhileWaitedOn,
 } from "./db/test-database.ts";
+import { ELECTRONIC_RECORDS_DISCLOSURE_VERSION } from "./electronic-records-disclosure.ts";
 import { formatDeadline } from "./envelope-deadline.ts";
 import { runEnvelopeSchedule } from "./envelope-schedule.ts";
 import { changeEnvelopeDeadline, EnvelopeMutationError } from "./envelopes.ts";
@@ -33,7 +34,6 @@ import {
   SigningAccessError,
   submitSigningForToken,
 } from "./signing.ts";
-import { ELECTRONIC_RECORDS_DISCLOSURE_VERSION } from "./electronic-records-disclosure.ts";
 
 // An envelope's deadline against a real Postgres: what a passed deadline
 // stops, what a new one brings back, and the one notice the daily job sends.

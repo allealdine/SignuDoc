@@ -5,11 +5,11 @@ import {
   addEmailDomain,
   emailNeedsAttention,
   getEmailStatus,
+  type ResendDomainsClient,
   recheckEmailDomain,
   resendRegionOption,
-  type ResendDomainsClient,
 } from "./email-status.ts";
-import { resolveSettings, type AppSettings } from "./settings.ts";
+import { type AppSettings, resolveSettings } from "./settings.ts";
 
 const stored: AppSettings = {
   allowedEmailDomains: ["acme.com"],

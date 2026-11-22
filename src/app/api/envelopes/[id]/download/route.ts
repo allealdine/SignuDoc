@@ -8,8 +8,8 @@ import {
   DownloadAccessError,
   getSenderEnvelopeDownload,
 } from "@/lib/downloads";
-import { downloadRequestSchema } from "@/lib/schemas/envelope";
 import { resolveEnvelopeViewerAccess } from "@/lib/envelope-access";
+import { downloadRequestSchema } from "@/lib/schemas/envelope";
 import { logRouteError } from "@/lib/security/logging";
 import { getClientIpAddress, getRequestPathname } from "@/lib/security/request";
 import { recordSystemAuditEvent } from "@/lib/services/system-audit";

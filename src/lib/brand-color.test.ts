@@ -113,8 +113,9 @@ test("the default palette is the one the stylesheet ships with", async () => {
     new URL("../app/globals.css", import.meta.url),
     "utf8",
   );
-  const { DEFAULT_BRAND_PALETTE, brandPaletteVariables } =
-    await import("./brand-color.ts");
+  const { DEFAULT_BRAND_PALETTE, brandPaletteVariables } = await import(
+    "./brand-color.ts"
+  );
 
   for (const [name, value] of Object.entries(
     brandPaletteVariables(DEFAULT_BRAND_PALETTE),

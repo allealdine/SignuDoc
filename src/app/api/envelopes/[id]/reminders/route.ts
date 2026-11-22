@@ -8,11 +8,11 @@ import {
 } from "@/lib/envelopes";
 import { changeRemindersSchema } from "@/lib/schemas/envelope";
 import { logRouteError } from "@/lib/security/logging";
+import { getClientIpAddress, getRequestPathname } from "@/lib/security/request";
 import {
   applyRateLimit,
   buildRateLimitKey,
 } from "@/lib/security/route-controls";
-import { getClientIpAddress, getRequestPathname } from "@/lib/security/request";
 
 type EnvelopeRemindersRouteContext = {
   params: Promise<{

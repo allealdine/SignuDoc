@@ -11,8 +11,16 @@
 import { createHash } from "node:crypto";
 
 import { tidyDisclosureText } from "./consent-disclosure-notice.ts";
+import type { Locale } from "./i18n/types.ts";
 
 export const ELECTRONIC_RECORDS_DISCLOSURE_VERSION = "2026-11-13";
+
+/**
+ * A different translation is a different set of words, so it gets its own
+ * version. The audit trail then shows which language the signer actually
+ * read. Older records keep the English version they were shown.
+ */
+export const INDONESIAN_DISCLOSURE_VERSION = "2026-11-21-id";
 
 /** The longest custom disclosure, in characters. */
 export const DISCLOSURE_MAX_LENGTH = 6000;
@@ -38,7 +46,33 @@ function contactFor(party: DisclosureParty): string {
 function standardSections(
   sender: string,
   contact: string,
+  locale: Locale,
 ): DisclosureSection[] {
+  if (locale === "id") {
+    return [
+      {
+        heading: "Menggunakan catatan dan tanda tangan elektronik",
+        text: `${sender} meminta Anda untuk menerima dokumen ini dan menandatanganinya secara elektronik, bukan di atas kertas. Jika Anda menyetujui, tanda tangan elektronik Anda memiliki kekuatan yang sama dengan tanda tangan tulisan tangan, dan dokumen yang Anda terima dengan cara ini dianggap telah diserahkan kepada Anda secara tertulis.`,
+      },
+      {
+        heading: "Anda dapat memilih kertas sebagai gantinya",
+        text: `Anda tidak wajib menyetujui. Untuk menandatangani di atas kertas sebagai gantinya, atau untuk meminta salinan cetak dari dokumen apa pun setelah menandatangani, hubungi ${contact}. Salinan cetak diberikan tanpa biaya, kecuali ${sender} memberi tahu Anda lain sebelum Anda memintanya.`,
+      },
+      {
+        heading: "Mencabut persetujuan Anda",
+        text: `Anda dapat mencabut persetujuan ini kapan saja sebelum menandatangani, dengan menolak atau dengan memberi tahu ${contact}. Pencabutan tidak membatalkan tanda tangan yang sudah Anda berikan.`,
+      },
+      {
+        heading: "Yang Anda butuhkan",
+        text: "Peramban web yang mutakhir dan perangkat yang dapat membuka serta menyimpan berkas PDF. Anda akan menerima dokumen yang telah ditandatangani melalui email, jadi pastikan alamat email Anda selalu diperbarui kepada pengirim. Unduh dan simpan salinan yang telah ditandatangani: itulah catatan Anda.",
+      },
+      {
+        heading: "Lingkup persetujuan ini",
+        text: "Dokumen ini dan pemberitahuan tentangnya yang dikirimkan kepada Anda melalui situs ini.",
+      },
+    ];
+  }
+
   return [
     {
       heading: "Using electronic records and signatures",
@@ -65,8 +99,9 @@ function standardSections(
 
 export function buildElectronicRecordsDisclosure(
   party: DisclosureParty,
+  locale: Locale = "en",
 ): DisclosureSection[] {
-  return standardSections(party.senderName, contactFor(party));
+  return standardSections(party.senderName, contactFor(party), locale);
 }
 
 /**
@@ -74,14 +109,24 @@ export function buildElectronicRecordsDisclosure(
  * {contact} where the sender's name and the address to write to go. It is
  * what the Organization form offers as a starting point to change.
  */
-export function standardDisclosureTemplate(): string {
-  return standardSections("{sender}", "{contact}")
+export function standardDisclosureTemplate(locale: Locale = "en"): string {
+  return standardSections("{sender}", "{contact}", locale)
     .map((section) => `${HEADING_MARK}${section.heading}\n${section.text}`)
     .join("\n\n");
 }
 
-export const CONSENT_STATEMENT =
+const ENGLISH_CONSENT_STATEMENT =
   "I have read the disclosure above, I can open and save PDF files on this device, and I agree to use electronic records and signatures for this document.";
+
+const INDONESIAN_CONSENT_STATEMENT =
+  "Saya telah membaca pengungkapan di atas, saya dapat membuka dan menyimpan berkas PDF di perangkat ini, dan saya menyetujui penggunaan catatan dan tanda tangan elektronik untuk dokumen ini.";
+
+/** The exact sentence the signer ticked, in the language they were reading. */
+export function consentStatement(locale: Locale = "en"): string {
+  return locale === "id"
+    ? INDONESIAN_CONSENT_STATEMENT
+    : ENGLISH_CONSENT_STATEMENT;
+}
 
 /**
  * A custom disclosure as it is stored: line endings made the same and the
@@ -156,11 +201,12 @@ export function validateCustomDisclosure(
 export function buildDisclosureSections(
   party: DisclosureParty,
   customText: string | null | undefined,
+  locale: Locale = "en",
 ): DisclosureSection[] {
   const normalized = normalizeCustomDisclosure(customText);
 
   if (normalized === null) {
-    return buildElectronicRecordsDisclosure(party);
+    return buildElectronicRecordsDisclosure(party, locale);
   }
 
   const contact = contactFor(party);
@@ -234,11 +280,14 @@ export function toStoredCustomDisclosure(
  */
 export function getDisclosureVersion(
   customText: string | null | undefined,
+  locale: Locale = "en",
 ): string {
   const normalized = normalizeCustomDisclosure(customText);
 
   if (normalized === null) {
-    return ELECTRONIC_RECORDS_DISCLOSURE_VERSION;
+    return locale === "id"
+      ? INDONESIAN_DISCLOSURE_VERSION
+      : ELECTRONIC_RECORDS_DISCLOSURE_VERSION;
   }
 
   const fingerprint = createHash("sha256")

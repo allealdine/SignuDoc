@@ -1,18 +1,17 @@
 import { Resend } from "resend";
-
+import { resolveEmailDriver } from "./services/email.ts";
 import {
   buildEmailAddresses,
   extractEmailAddress,
   getAddressDomain,
   isResendTestSender,
 } from "./services/email-addresses.ts";
-import { resolveEmailDriver } from "./services/email.ts";
 import {
   getSettings,
   markEmailReady,
   type ResolvedSettings,
 } from "./settings.ts";
-import { getEnv, readEnv, type EnvSource } from "./utils/env.ts";
+import { type EnvSource, getEnv, readEnv } from "./utils/env.ts";
 
 // Whether this install can send email to anyone, and what is left to do if
 // it cannot. Shown to the administrator in Settings.

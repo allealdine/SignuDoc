@@ -414,8 +414,8 @@ export function buildOpenApiDocument(
     },
     info: {
       description:
-        "Create, send and track envelopes on a SignuDoc install. See docs/api.md in the SignuDoc repository.",
-      title: "SignuDoc API",
+        "Create, send and track envelopes on a Sakta install. See docs/api.md in the SignuDoc repository.",
+      title: "Sakta API",
       version: "1",
     },
     openapi: "3.1.0",

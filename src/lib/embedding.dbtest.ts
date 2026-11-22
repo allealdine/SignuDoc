@@ -7,13 +7,12 @@ import { after, afterEach, before, test } from "node:test";
 
 import { PDFDocument } from "pdf-lib";
 import type pg from "pg";
-
-import { createApiKey } from "./api-keys.ts";
 import {
+  type ApiActor,
   apiCreateEnvelopeSchema,
   createEnvelopeForApi,
-  type ApiActor,
 } from "./api/envelopes.ts";
+import { createApiKey } from "./api-keys.ts";
 import { openTestDatabase, waitUntilBlockedBy } from "./db/test-database.ts";
 import { ELECTRONIC_RECORDS_DISCLOSURE_VERSION } from "./electronic-records-disclosure.ts";
 import {

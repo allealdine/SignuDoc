@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 
-import { getDb, queryOne, type DbPool } from "./db/connection.ts";
-import { findSignatures, fillSignature } from "./services/pdf-incremental.ts";
+import { type DbPool, getDb, queryOne } from "./db/connection.ts";
+import { fillSignature, findSignatures } from "./services/pdf-incremental.ts";
 import {
   prepareRevisionZero,
   prepareSignerRevision,
@@ -16,13 +16,13 @@ import {
   addSignatureTimestamp,
   certificateMatchesName,
   checkSignerSignature,
-  SignerSignatureError,
   type SignatureLevel,
+  SignerSignatureError,
 } from "./services/signer-cms.ts";
 import {
-  signingProviderById,
-  SigningProviderError,
   type ProviderData,
+  SigningProviderError,
+  signingProviderById,
 } from "./services/signing-providers.ts";
 import {
   createStorageService,
@@ -32,11 +32,11 @@ import { buildSignerRevisionKey } from "./services/storage-keys.ts";
 import type { SignerCheckMethod } from "./signer-checks.ts";
 import {
   prepareSignerSubmission,
-  submitSigningForToken,
   SigningMutationError,
   type SigningRequestMeta,
+  submitSigningForToken,
 } from "./signing.ts";
-import { readEnv, resolveAppUrl, type EnvSource } from "./utils/env.ts";
+import { type EnvSource, readEnv, resolveAppUrl } from "./utils/env.ts";
 
 // Signing with a certificate in the signer's own name (eIDAS AdES or QES).
 //
@@ -81,7 +81,10 @@ type SessionRow = {
 
 /** Why a signer is sent back to the signing page, as the page shows it. */
 export type ProviderSigningProblem =
-  "cancelled" | "expired" | "failed" | "name";
+  | "cancelled"
+  | "expired"
+  | "failed"
+  | "name";
 
 export class ProviderSigningError extends Error {
   readonly problem: ProviderSigningProblem;

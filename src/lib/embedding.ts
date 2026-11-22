@@ -1,16 +1,16 @@
 import {
+  type DbExecutor,
+  type DbPool,
   getDb,
   queryMany,
   queryOne,
   withTransaction,
-  type DbExecutor,
-  type DbPool,
 } from "./db/connection.ts";
+import { parseEmbedOrigin } from "./embed-origin.ts";
 import { hashOpaqueToken } from "./services/opaque-tokens.ts";
 import { issueSigningLink } from "./services/signing-links.ts";
 import { recordSystemAuditEvent } from "./services/system-audit.ts";
 import type { EnvSource } from "./utils/env.ts";
-import { parseEmbedOrigin } from "./embed-origin.ts";
 
 export { httpEmbedOriginsAllowed, parseEmbedOrigin } from "./embed-origin.ts";
 

@@ -32,24 +32,24 @@ replace the licenses for redistributed third-party files.
 
 ### 4. Mozilla PDF.js legacy worker asset
 
-- **Bundled path:** `public/pdfjs/5.5.207/legacy/build/pdf.worker.min.mjs`
+- **Bundled path:** `public/pdfjs/6.5.207/legacy/build/pdf.worker.min.mjs`
 - **Source project:** Mozilla PDF.js
 - **License:** Apache License 2.0
 - **Full license text:** `LICENSES/Apache-2.0.txt`
 
 ### 5. PDF.js standard fonts - PDFium-derived Foxit font files
 
-- **Bundled path:** `public/pdfjs/5.5.207/standard_fonts/Foxit*.pfb`
+- **Bundled path:** `public/pdfjs/6.5.207/standard_fonts/Foxit*.pfb`
 - **Source project:** Mozilla PDF.js standard font assets
-- **License text already bundled at:** `public/pdfjs/5.5.207/standard_fonts/LICENSE_FOXIT`
+- **License text already bundled at:** `public/pdfjs/6.5.207/standard_fonts/LICENSE_FOXIT`
 - **Notes:** The bundled notice identifies these files under the PDFium Authors copyright and license terms distributed with PDF.js.
 
 ### 6. PDF.js standard fonts - Liberation Sans
 
-- **Bundled path:** `public/pdfjs/5.5.207/standard_fonts/LiberationSans-*.ttf`
+- **Bundled path:** `public/pdfjs/6.5.207/standard_fonts/LiberationSans-*.ttf`
 - **Source project:** Mozilla PDF.js standard font assets
 - **License:** SIL Open Font License 1.1
-- **License text already bundled at:** `public/pdfjs/5.5.207/standard_fonts/LICENSE_LIBERATION`
+- **License text already bundled at:** `public/pdfjs/6.5.207/standard_fonts/LICENSE_LIBERATION`
 
 ## Notes
 

@@ -3,21 +3,21 @@ import { ZodError } from "zod";
 
 import { getDb } from "@/lib/db/connection";
 import { startProviderSigning } from "@/lib/provider-signing";
+import { logRouteError } from "@/lib/security/logging";
+import { getClientIpAddress } from "@/lib/security/request";
 import {
-  verificationRequiredResponse,
-  verifiedMethodsForRequest,
-} from "@/lib/signing-route";
+  applyPublicLinkRateLimit,
+  buildRateLimitKey,
+} from "@/lib/security/route-controls";
 import {
   SigningAccessError,
   SigningMutationError,
   SigningVerificationRequiredError,
 } from "@/lib/signing";
-import { logRouteError } from "@/lib/security/logging";
 import {
-  applyPublicLinkRateLimit,
-  buildRateLimitKey,
-} from "@/lib/security/route-controls";
-import { getClientIpAddress } from "@/lib/security/request";
+  verificationRequiredResponse,
+  verifiedMethodsForRequest,
+} from "@/lib/signing-route";
 
 // Preparing the signer's revision of the PDF and handing its hash to the
 // signing provider can take a while on a long document.

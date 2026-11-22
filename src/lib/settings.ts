@@ -1,4 +1,4 @@
-import { buildBranding, type Branding } from "./branding.ts";
+import { type Branding, buildBranding } from "./branding.ts";
 import {
   afterCommit,
   type DbExecutor,
@@ -13,7 +13,7 @@ import {
   type SignupMode,
   type SignupPolicy,
 } from "./signup-policy.ts";
-import { getEnv, isHostedMode, type EnvSource } from "./utils/env.ts";
+import { type EnvSource, getEnv, isHostedMode } from "./utils/env.ts";
 
 // Install-wide settings: one row in app_settings, written by the first-run
 // setup page and by an administrator in Settings.

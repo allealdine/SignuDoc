@@ -6,11 +6,11 @@ import { runAsSetup } from "@/lib/auth/setup-context";
 import { addEmailDomain } from "@/lib/email-status";
 import { rejectBots } from "@/lib/security/botid";
 import { logRouteError, logSecurityEvent } from "@/lib/security/logging";
+import { getClientIpAddress, getRequestPathname } from "@/lib/security/request";
 import {
   applyRateLimit,
   buildRateLimitKey,
 } from "@/lib/security/route-controls";
-import { getClientIpAddress, getRequestPathname } from "@/lib/security/request";
 import { completeSetup, SetupError } from "@/lib/setup";
 
 // First-run setup. Open to anyone who reaches it while the install has no

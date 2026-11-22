@@ -1,20 +1,21 @@
 "use client";
 
 import { PlusIcon } from "lucide-react";
-import { useState, type ChangeEvent } from "react";
-
-import type { DashboardEnvelopeListItem } from "@/lib/envelopes";
+import { type ChangeEvent, useState } from "react";
 import {
   DashboardDocumentsHeader,
   DashboardDocumentsPanel,
-  dashboardStatusFilterMap,
   type DashboardFilter,
   type DashboardPagination,
   type DashboardShellState,
   type DashboardView,
+  dashboardStatusFilterMap,
 } from "@/components/dashboard/dashboard-documents-surface";
 import { DocumentThumbnail } from "@/components/shared/document-thumbnail";
 import { ShellButton } from "@/components/shared/form-shell";
+import type { DashboardEnvelopeListItem } from "@/lib/envelopes";
+import type { Messages } from "@/lib/i18n/locales/en.ts";
+import { useMessages } from "@/lib/i18n/messages-provider.tsx";
 
 type DashboardShellProps = {
   envelopes?: readonly DashboardEnvelopeListItem[];
@@ -33,6 +34,8 @@ export function DashboardShell({
   pagination,
   view,
 }: DashboardShellProps) {
+  const { messages } = useMessages();
+  const copy = messages.dashboard;
   const [searchValue, setSearchValue] = useState(initialSearch);
   const [selectedFilter, setSelectedFilter] = useState<DashboardFilter>("All");
 
@@ -86,16 +89,17 @@ export function DashboardShell({
 
   return (
     <div className="space-y-5">
-      <DashboardDocumentsHeader view={view} />
+      <DashboardDocumentsHeader copy={copy} view={view} />
 
       {initialState === "empty" ? (
         view === "all" ? (
-          <EmptyInstallState />
+          <EmptyInstallState copy={copy} />
         ) : (
-          <EmptyDashboardState />
+          <EmptyDashboardState copy={copy} />
         )
       ) : (
         <DashboardDocumentsPanel
+          copy={copy}
           envelopes={envelopes}
           filteredEnvelopes={filteredEnvelopes}
           isError={isError}
@@ -113,7 +117,7 @@ export function DashboardShell({
   );
 }
 
-function EmptyInstallState() {
+function EmptyInstallState({ copy }: { copy: Messages["dashboard"] }) {
   return (
     <section
       className="panel px-6 py-14 text-center sm:py-20"
@@ -121,16 +125,16 @@ function EmptyInstallState() {
       data-animate-delay="1"
     >
       <h2 className="text-2xl font-extrabold tracking-[-0.03em] text-(--fg)">
-        No envelopes yet
+        {copy.empty.install.title}
       </h2>
       <p className="mt-2 text-[0.9375rem] leading-6 text-(--secondary)">
-        Nobody in your organization has started an envelope.
+        {copy.empty.install.description}
       </p>
     </section>
   );
 }
 
-function EmptyDashboardState() {
+function EmptyDashboardState({ copy }: { copy: Messages["dashboard"] }) {
   return (
     <section
       className="panel px-6 py-14 sm:py-20"
@@ -143,10 +147,10 @@ function EmptyDashboardState() {
         </span>
         <div className="space-y-2">
           <h2 className="text-2xl font-extrabold tracking-[-0.03em] text-(--fg)">
-            No documents yet
+            {copy.empty.mine.title}
           </h2>
           <p className="text-[0.9375rem] leading-6 text-(--secondary)">
-            Upload a PDF and send it for signatures in minutes.
+            {copy.empty.mine.description}
           </p>
         </div>
         <ShellButton href="/envelopes/new">
@@ -155,7 +159,7 @@ function EmptyDashboardState() {
             className="size-[1.125rem]"
             strokeWidth={2.4}
           />
-          New envelope
+          {copy.header.action}
         </ShellButton>
       </div>
     </section>

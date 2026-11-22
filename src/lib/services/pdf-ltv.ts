@@ -6,7 +6,7 @@ import {
 import { lookup as dnsLookup, type LookupAddress } from "node:dns";
 import { request as httpRequest, type IncomingMessage } from "node:http";
 import { request as httpsRequest } from "node:https";
-import { type LookupFunction } from "node:net";
+import type { LookupFunction } from "node:net";
 
 import {
   algorithm,
@@ -23,13 +23,13 @@ import {
   TAG,
   type Tlv,
 } from "./der.ts";
-import { isPrivateAddress } from "./private-address.ts";
 import {
   appendDocumentSecurityStore,
   appendDocumentTimestamp,
   findSignatures,
   hasDocumentSecurityStore,
 } from "./pdf-incremental.ts";
+import { isPrivateAddress } from "./private-address.ts";
 
 // Long-term validation (PAdES B-LT and B-LTA, ETSI EN 319 142-1).
 //

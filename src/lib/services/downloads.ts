@@ -1,10 +1,10 @@
 import {
-  RECIPIENT_DOWNLOAD_LINK_TTL_SECONDS,
   type DownloadFileType,
+  RECIPIENT_DOWNLOAD_LINK_TTL_SECONDS,
 } from "../types/domain.ts";
-import { getEnv, type EnvSource } from "../utils/env.ts";
-import { requireConfigValue } from "./service-config.ts";
+import { type EnvSource, getEnv } from "../utils/env.ts";
 import { issueOpaqueToken } from "./opaque-tokens.ts";
+import { requireConfigValue } from "./service-config.ts";
 
 export type IssuedDownloadLink = {
   exp: number;

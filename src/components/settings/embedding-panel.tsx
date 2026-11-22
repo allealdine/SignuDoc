@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 
+import { formatMessage } from "@/lib/i18n/format.ts";
+import { useMessages } from "@/lib/i18n/messages-provider.tsx";
+
 // The sites allowed to show SignuDoc's signing page inside their own pages
 // (embedded signing, through the API). Administrators only.
 
-const GENERIC_ERROR_MESSAGE = "Something went wrong. Please try again.";
 const EMBED_DOCS_URL =
   "https://github.com/NYLLON-SOFTWARE/SignuDoc/blob/main/docs/api.md#embedded-signing";
 
@@ -18,6 +20,7 @@ type Payload = {
 type Change = { method: "DELETE" | "POST"; origin: string };
 
 export function EmbeddingPanel() {
+  const copy = useMessages().messages.settings.embedding;
   const [origins, setOrigins] = useState<string[] | null>(null);
   const [value, setValue] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -43,12 +46,12 @@ export function EmbeddingPanel() {
             setOrigins(payload.origins.map((entry) => entry.origin));
             setListError(null);
           } else {
-            setListError(payload?.error ?? GENERIC_ERROR_MESSAGE);
+            setListError(payload?.error ?? copy.genericError);
           }
         }
       } catch {
         if (!cancelled) {
-          setListError(GENERIC_ERROR_MESSAGE);
+          setListError(copy.genericError);
         }
       }
     })();
@@ -78,7 +81,7 @@ export function EmbeddingPanel() {
       const payload = (await response.json().catch(() => null)) as Payload;
 
       if (!response.ok) {
-        setError(payload?.error ?? GENERIC_ERROR_MESSAGE);
+        setError(payload?.error ?? copy.genericError);
         return;
       }
 
@@ -98,7 +101,7 @@ export function EmbeddingPanel() {
 
       setRevision((current) => current + 1);
     } catch {
-      setError(GENERIC_ERROR_MESSAGE);
+      setError(copy.genericError);
     } finally {
       setPending(null);
     }
@@ -108,29 +111,26 @@ export function EmbeddingPanel() {
     <div className="space-y-5 border-t border-(--border) pt-8">
       <div className="space-y-2">
         <h3 className="text-lg font-extrabold tracking-[-0.02em] text-(--fg)">
-          Embedded signing
+          {copy.title}
         </h3>
         <p className="max-w-2xl text-sm leading-6 text-(--secondary)">
-          Let an app show the signing page inside its own site, for envelopes it
-          sends through the API with{" "}
+          {copy.descriptionBefore}{" "}
           <a
             className="font-semibold text-(--accent) underline-offset-4 hover:underline"
             href={EMBED_DOCS_URL}
             rel="noreferrer"
             target="_blank"
           >
-            embedded delivery
+            {copy.docsLink}
           </a>
-          . No invitations are emailed for those: the app signs the person in
-          and says who they are, so list only sites you trust. Every other page
-          of SignuDoc stays impossible to frame.
+          {copy.descriptionAfter}
         </p>
       </div>
 
       <div className="flex max-w-xl flex-wrap items-end gap-3">
         <label className="grid min-w-0 flex-1 gap-1.5">
           <span className="text-[0.8125rem] font-semibold text-(--secondary)">
-            Site
+            {copy.site.label}
           </span>
           <input
             autoComplete="off"
@@ -139,7 +139,7 @@ export function EmbeddingPanel() {
             inputMode="url"
             name="embed-origin"
             onChange={(event) => setValue(event.target.value)}
-            placeholder="https://app.example.com"
+            placeholder={copy.site.placeholder}
             value={value}
           />
         </label>
@@ -149,7 +149,7 @@ export function EmbeddingPanel() {
           onClick={() => void change("POST", value)}
           type="button"
         >
-          {pending?.method === "POST" ? "Adding..." : "Allow site"}
+          {pending?.method === "POST" ? copy.adding : copy.add}
         </button>
       </div>
 
@@ -166,28 +166,23 @@ export function EmbeddingPanel() {
         >
           <span>
             {origins === null
-              ? `The allowed sites could not be loaded. ${listError}`
-              : `The list may be out of date. ${listError}`}
+              ? formatMessage(copy.listError, { error: listError })
+              : formatMessage(copy.staleError, { error: listError })}
           </span>
           <button
             className="btn-quiet"
             onClick={() => setRevision((current) => current + 1)}
             type="button"
           >
-            Try again
+            {copy.retry}
           </button>
         </div>
       ) : null}
 
       {origins === null ? null : origins.length === 0 ? (
-        <p className="text-sm text-(--secondary)">
-          No sites yet, so embedded signing is off.
-        </p>
+        <p className="text-sm text-(--secondary)">{copy.empty}</p>
       ) : (
-        <ul
-          aria-label="Sites allowed to embed signing"
-          className="grid max-w-2xl gap-2"
-        >
+        <ul aria-label={copy.ariaLabel} className="grid max-w-2xl gap-2">
           {origins.map((origin) => (
             <li
               className="well flex flex-wrap items-center justify-between gap-2 px-4 py-3"
@@ -197,15 +192,15 @@ export function EmbeddingPanel() {
                 {origin}
               </span>
               <button
-                aria-label={`Remove ${origin}`}
+                aria-label={formatMessage(copy.removeAriaLabel, { origin })}
                 className="btn-quiet btn-quiet-danger"
                 disabled={pending !== null}
                 onClick={() => void change("DELETE", origin)}
                 type="button"
               >
                 {pending?.method === "DELETE" && pending.origin === origin
-                  ? "Removing..."
-                  : "Remove"}
+                  ? copy.removing
+                  : copy.remove}
               </button>
             </li>
           ))}

@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
-
-import { getAuthSessionFromHeaders } from "./server.ts";
 import { logSecurityEvent } from "../security/logging.ts";
+import { getClientIpAddress, getRequestPathname } from "../security/request.ts";
 import { getSettings } from "../settings.ts";
 import { needsTwoFactorSetup } from "../sign-in-security.ts";
-import { getClientIpAddress, getRequestPathname } from "../security/request.ts";
+import { getAuthSessionFromHeaders } from "./server.ts";
 
 export async function requireVerifiedSenderSession(request: Request) {
   const session = await getAuthSessionFromHeaders(request.headers);

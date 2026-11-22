@@ -1,4 +1,4 @@
-import { signatureMeanings, type SignatureMeaning } from "./types/domain.ts";
+import { type SignatureMeaning, signatureMeanings } from "./types/domain.ts";
 
 // What a Part 11 signature means (21 CFR 11.50(a)(3)), in words for the
 // signer, the signed document and the certificate. No database or server

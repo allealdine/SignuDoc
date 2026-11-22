@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { normalizeBrandColor } from "./brand-color.ts";
 import { buildBrandLogoPath } from "./branding.ts";
-import { getDb, type DbExecutor } from "./db/connection.ts";
+import { type DbExecutor, getDb } from "./db/connection.ts";
 import {
   normalizeCustomDisclosure,
   standardDisclosureTemplate,
@@ -11,9 +11,9 @@ import {
 } from "./electronic-records-disclosure.ts";
 import { emailSchema } from "./schemas/common.ts";
 import {
-  saveSettings,
   type AppSettings,
   type ResolvedSettings,
+  saveSettings,
 } from "./settings.ts";
 import { parseEmailDomainList, SIGNUP_MODES } from "./signup-policy.ts";
 

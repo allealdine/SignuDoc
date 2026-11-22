@@ -1,9 +1,4 @@
 import { createHash, randomUUID } from "node:crypto";
-
-import {
-  auditEventRecordSchema,
-  type AuditEventRecord,
-} from "../schemas/envelope.ts";
 import {
   afterCommit,
   type DbExecutor,
@@ -11,6 +6,10 @@ import {
   queryMany,
   withTransaction,
 } from "../db/connection.ts";
+import {
+  type AuditEventRecord,
+  auditEventRecordSchema,
+} from "../schemas/envelope.ts";
 import { logAuditRecord } from "../security/logging.ts";
 import { canonicalJson } from "../utils/canonical-json.ts";
 import { enqueueWebhookDeliveries } from "../webhooks/outbox.ts";

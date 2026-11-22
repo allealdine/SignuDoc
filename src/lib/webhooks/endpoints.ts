@@ -1,12 +1,12 @@
 import { randomUUID } from "node:crypto";
 
 import {
+  type DbExecutor,
+  type DbPool,
   getDb,
   queryMany,
   queryOne,
   withTransaction,
-  type DbExecutor,
-  type DbPool,
 } from "../db/connection.ts";
 import {
   decryptPrivateKey,
@@ -15,7 +15,7 @@ import {
 } from "../services/seal-identity.ts";
 import { recordSystemAuditEvent } from "../services/system-audit.ts";
 import type { EnvSource } from "../utils/env.ts";
-import { type WebhookEventType } from "./events.ts";
+import type { WebhookEventType } from "./events.ts";
 import { parseWebhookUrl, WebhookUrlError } from "./safe-post.ts";
 import { generateWebhookSecret } from "./signing.ts";
 

@@ -1,30 +1,14 @@
 "use client";
 
 import { ShieldCheckIcon } from "lucide-react";
-import { useEffect, useState, type FormEvent } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 
 import { Brand } from "@/components/layout/brand";
 import { PublicLegalFooter } from "@/components/layout/public-legal-links";
 import { FieldShell, ShellButton } from "@/components/shared/form-shell";
+import { formatMessage } from "@/lib/i18n/format.ts";
+import { useMessages } from "@/lib/i18n/messages-provider.tsx";
 import type { SigningVerificationState } from "@/lib/schemas/signing";
-
-type Method = SigningVerificationState["required"][number];
-
-const METHOD_COPY: Record<Method, { helper: string; label: string }> = {
-  access_code: {
-    helper: "The sender gave you this code separately, for example by phone.",
-    label: "Access code",
-  },
-  account: {
-    helper:
-      "This document is signed with your own account here. Enter the password you sign in with.",
-    label: "Password",
-  },
-  email_code: {
-    helper: "We email a 6-digit code to the address this document was sent to.",
-    label: "Code from your email",
-  },
-};
 
 export function SignerVerificationScreen({
   state,
@@ -33,13 +17,17 @@ export function SignerVerificationScreen({
   state: SigningVerificationState;
   token: string;
 }) {
+  const { messages } = useMessages();
+  const verification = messages.signing.verification;
   const method = state.pending[0]!;
   const [code, setCode] = useState("");
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(
     state.emailCodeSentAt && method === "email_code"
-      ? `A code was sent to ${state.maskedEmail}.`
+      ? formatMessage(verification.codeSent, {
+          maskedEmail: state.maskedEmail,
+        })
       : null,
   );
   const [isChecking, setIsChecking] = useState(false);
@@ -68,7 +56,7 @@ export function SignerVerificationScreen({
       } | null;
 
       if (!response.ok) {
-        setError(payload?.error ?? "The code could not be sent right now.");
+        setError(payload?.error ?? verification.resendError);
         return;
       }
 
@@ -76,7 +64,9 @@ export function SignerVerificationScreen({
 
       if (payload?.sent === false) {
         setNotice(
-          `A code was already sent to ${maskedEmail} less than a minute ago, so no new email went out. Use that code, or send a new one when the countdown on the button ends.`,
+          formatMessage(verification.codeAlreadySent, {
+            maskedEmail,
+          }),
         );
         const seconds = Math.max(1, Math.ceil(payload.retryAfterSeconds ?? 60));
 
@@ -86,12 +76,13 @@ export function SignerVerificationScreen({
       }
 
       setNotice(
-        notice
-          ? `A new code was sent to ${maskedEmail}.`
-          : `A code was sent to ${maskedEmail}.`,
+        formatMessage(
+          notice ? verification.newCodeSent : verification.codeSent,
+          { maskedEmail },
+        ),
       );
     } catch {
-      setError("The code could not be sent right now.");
+      setError(verification.resendError);
     } finally {
       setIsSending(false);
     }
@@ -117,7 +108,7 @@ export function SignerVerificationScreen({
       } | null;
 
       if (!response.ok) {
-        setError(payload?.error ?? "The code could not be checked right now.");
+        setError(payload?.error ?? verification.checkError);
         return;
       }
 
@@ -125,7 +116,7 @@ export function SignerVerificationScreen({
       // document.
       window.location.reload();
     } catch {
-      setError("The code could not be checked right now.");
+      setError(verification.checkError);
     } finally {
       setIsChecking(false);
     }
@@ -149,7 +140,9 @@ export function SignerVerificationScreen({
       setResendAt(null);
       setResendWait(0);
       setNotice(
-        `A code was sent to ${state.maskedEmail}. If it has not arrived, you can send a new one now.`,
+        formatMessage(verification.codeResendReady, {
+          maskedEmail: state.maskedEmail,
+        }),
       );
     }
 
@@ -161,9 +154,9 @@ export function SignerVerificationScreen({
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", tick);
     };
-  }, [resendAt, state.maskedEmail]);
+  }, [resendAt, state.maskedEmail, verification.codeResendReady]);
 
-  const copy = METHOD_COPY[method];
+  const copy = verification.methods[method];
   const step = state.required.indexOf(method) + 1;
 
   return (
@@ -185,21 +178,28 @@ export function SignerVerificationScreen({
             <ShieldCheckIcon className="size-6" strokeWidth={2.2} />
           </span>
           <h1 className="mt-6 text-[clamp(1.625rem,4vw,2rem)] font-extrabold leading-tight tracking-[-0.03em] text-(--fg)">
-            Confirm it&apos;s you
+            {verification.title}
           </h1>
           <p className="mt-3 text-base leading-7 text-(--secondary)">
-            {state.senderName} asked for a check before you open &ldquo;
-            {state.envelopeTitle}&rdquo;.
+            {formatMessage(verification.intro, {
+              envelopeTitle: state.envelopeTitle,
+              senderName: state.senderName,
+            })}
             {state.required.length > 1
-              ? ` Step ${String(step)} of ${String(state.required.length)}.`
+              ? ` ${formatMessage(verification.step, {
+                  step: String(step),
+                  total: String(state.required.length),
+                })}`
               : ""}
           </p>
           <form className="mt-8 grid gap-5" onSubmit={handleSubmit}>
             {method === "account" ? (
               <FieldShell
                 autoComplete="username"
-                helper={`The address this document was sent to (${state.maskedEmail}).`}
-                label="Email address"
+                helper={formatMessage(verification.emailHelper, {
+                  maskedEmail: state.maskedEmail,
+                })}
+                label={verification.emailLabel}
                 name="signer-email"
                 onChange={(event) => setEmail(event.target.value)}
                 readOnly={false}
@@ -238,7 +238,7 @@ export function SignerVerificationScreen({
                 loading={isChecking}
                 type="submit"
               >
-                Continue
+                {verification.continue}
               </ShellButton>
               {method === "email_code" ? (
                 <ShellButton
@@ -248,10 +248,12 @@ export function SignerVerificationScreen({
                   variant="secondary"
                 >
                   {!notice
-                    ? "Email me a code"
+                    ? verification.firstCode
                     : resendWait > 0
-                      ? `Send a new code in ${String(resendWait)}s`
-                      : "Send a new code"}
+                      ? formatMessage(verification.resendIn, {
+                          seconds: String(resendWait),
+                        })
+                      : verification.resendNew}
                 </ShellButton>
               ) : null}
             </div>

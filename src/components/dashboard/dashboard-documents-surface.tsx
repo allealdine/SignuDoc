@@ -1,15 +1,18 @@
 import { PlusIcon, SearchIcon } from "lucide-react";
 import Link from "next/link";
 import type { ChangeEventHandler, ReactNode } from "react";
-
-import { cn } from "@/lib/cn";
-import type { DashboardEnvelopeListItem } from "@/lib/envelopes";
 import {
   DocumentThumbnail,
   SampleDocumentPage,
 } from "@/components/shared/document-thumbnail";
 import { ShellButton, StaticShellButton } from "@/components/shared/form-shell";
 import { PageHeader } from "@/components/shared/page-header";
+import { cn } from "@/lib/cn";
+import type { DashboardEnvelopeListItem } from "@/lib/envelopes";
+import { formatMessage } from "@/lib/i18n/format.ts";
+import type { Messages } from "@/lib/i18n/locales/en.ts";
+
+type DashboardCopy = Messages["dashboard"];
 
 export type DashboardShellState = "default" | "empty" | "error";
 
@@ -23,7 +26,12 @@ export type DashboardPagination = {
 };
 
 export type DashboardFilter =
-  "All" | "Draft" | "Sent" | "Completed" | "Declined" | "Voided";
+  | "All"
+  | "Draft"
+  | "Sent"
+  | "Completed"
+  | "Declined"
+  | "Voided";
 
 type EnvelopeStatus = "draft" | "sent" | "completed" | "declined" | "voided";
 
@@ -47,17 +55,6 @@ export const dashboardStatusFilterMap: Record<
   Voided: "voided",
 };
 
-const documentsDescription =
-  "Track drafts, sent envelopes, and completed agreements in one place.";
-
-const statusLabelMap: Record<EnvelopeStatus, string> = {
-  completed: "Completed",
-  declined: "Declined",
-  draft: "Draft",
-  sent: "Sent",
-  voided: "Voided",
-};
-
 const statusPillClasses: Record<EnvelopeStatus, string> = {
   completed: "pill-success",
   declined: "pill-danger",
@@ -67,12 +64,14 @@ const statusPillClasses: Record<EnvelopeStatus, string> = {
 };
 
 type DashboardDocumentsHeaderProps = {
+  copy: DashboardCopy;
   interactive?: boolean;
   /** Shown to administrators only. */
   view?: DashboardView;
 };
 
 type DashboardDocumentsPanelProps = {
+  copy: DashboardCopy;
   envelopes: readonly DashboardEnvelopeListItem[];
   filteredEnvelopes: readonly DashboardEnvelopeListItem[];
   interactive?: boolean;
@@ -88,21 +87,25 @@ type DashboardDocumentsPanelProps = {
 };
 
 type EnvelopeGridProps = {
+  copy: DashboardCopy;
   envelopes: readonly DashboardEnvelopeListItem[];
   interactive: boolean;
 };
 
 type NoResultsStateProps = {
+  copy: DashboardCopy;
   interactive: boolean;
   onReset?: () => void;
 };
 
 type ErrorBannerProps = {
+  copy: DashboardCopy;
   interactive: boolean;
   onRetry?: () => void;
 };
 
 export function DashboardDocumentsHeader({
+  copy,
   interactive = true,
   view,
 }: DashboardDocumentsHeaderProps) {
@@ -113,7 +116,7 @@ export function DashboardDocumentsHeader({
         className="size-[1.125rem]"
         strokeWidth={2.4}
       />
-      New envelope
+      {copy.header.action}
     </>
   );
 
@@ -128,21 +131,22 @@ export function DashboardDocumentsHeader({
           )
         }
         description={
-          view === "all"
-            ? "Every envelope in your organization, whoever sent it."
-            : documentsDescription
+          view === "all" ? copy.header.allDescription : copy.header.description
         }
-        title={view === "all" ? "All envelopes" : "Documents"}
+        title={view === "all" ? copy.header.allTitle : copy.header.title}
       />
       {view && interactive ? (
-        <nav aria-label="Whose envelopes" className="segmented self-start">
+        <nav
+          aria-label={copy.header.viewLabel}
+          className="segmented self-start"
+        >
           <Link
             aria-current={view === "mine" ? "page" : undefined}
             className="segmented-item"
             data-active={view === "mine"}
             href="/dashboard"
           >
-            Mine
+            {copy.header.viewMine}
           </Link>
           <Link
             aria-current={view === "all" ? "page" : undefined}
@@ -150,7 +154,7 @@ export function DashboardDocumentsHeader({
             data-active={view === "all"}
             href="/dashboard?view=all"
           >
-            Everyone&apos;s
+            {copy.header.viewEveryone}
           </Link>
         </nav>
       ) : null}
@@ -159,6 +163,7 @@ export function DashboardDocumentsHeader({
 }
 
 export function DashboardDocumentsPanel({
+  copy,
   envelopes,
   filteredEnvelopes,
   interactive = true,
@@ -178,7 +183,7 @@ export function DashboardDocumentsPanel({
     <section className="space-y-4" data-animate="enter" data-animate-delay="1">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div
-          aria-label="Filter documents"
+          aria-label={copy.filters.label}
           className="segmented self-start"
           role="group"
         >
@@ -192,7 +197,7 @@ export function DashboardDocumentsPanel({
                   data-active={isActive}
                   key={filter}
                 >
-                  {filter}
+                  {copy.filters[filter]}
                 </span>
               );
             }
@@ -205,7 +210,7 @@ export function DashboardDocumentsPanel({
                 onClick={() => onFilterChange?.(filter)}
                 type="button"
               >
-                {filter}
+                {copy.filters[filter]}
               </button>
             );
           })}
@@ -220,11 +225,11 @@ export function DashboardDocumentsPanel({
           <label className="flex min-h-[2.625rem] w-full items-center gap-2.5 rounded-xl bg-white px-3.5 text-(--tertiary) transition focus-within:ring-3 focus-within:ring-ring/50">
             <SearchIcon aria-hidden="true" className="size-4 shrink-0" />
             <input
-              aria-label="Search by title or email..."
+              aria-label={copy.search}
               className="min-w-0 flex-1 bg-transparent py-2 text-sm text-(--fg) outline-none placeholder:text-(--placeholder)"
               name="q"
               onChange={interactive ? onSearchChange : undefined}
-              placeholder="Search by title or email..."
+              placeholder={copy.search}
               readOnly={!interactive}
               tabIndex={interactive ? undefined : -1}
               type="search"
@@ -235,33 +240,49 @@ export function DashboardDocumentsPanel({
       </div>
 
       {isError ? (
-        <ErrorBanner interactive={interactive} onRetry={onRetry} />
+        <ErrorBanner copy={copy} interactive={interactive} onRetry={onRetry} />
       ) : null}
 
       {filteredEnvelopes.length > 0 ? (
-        <EnvelopeGrid envelopes={filteredEnvelopes} interactive={interactive} />
+        <EnvelopeGrid
+          copy={copy}
+          envelopes={filteredEnvelopes}
+          interactive={interactive}
+        />
       ) : hasSeededEnvelopes || searchValue || pagination?.newerHref ? (
-        <NoResultsState interactive={interactive} onReset={onReset} />
+        <NoResultsState
+          copy={copy}
+          interactive={interactive}
+          onReset={onReset}
+        />
       ) : null}
 
       {!isError && (hasSeededEnvelopes || pagination?.newerHref) ? (
         <div className="flex flex-wrap items-center justify-between gap-3 px-1">
           <p className="text-[0.8125rem] text-(--tertiary)">
-            Showing {filteredEnvelopes.length} of {envelopes.length} envelopes
-            {pagination?.newerHref || pagination?.olderHref
-              ? " on this page"
-              : ""}
+            {formatMessage(
+              pagination?.newerHref || pagination?.olderHref
+                ? copy.showingOnPage
+                : copy.showing,
+              {
+                shown: filteredEnvelopes.length,
+                total: envelopes.length,
+              },
+            )}
           </p>
           {interactive && (pagination?.newerHref || pagination?.olderHref) ? (
-            <nav aria-label="Pages" className="flex items-center gap-2">
+            <nav
+              aria-label={copy.pagination.label}
+              className="flex items-center gap-2"
+            >
               {pagination.newerHref ? (
                 <ShellButton href={pagination.newerHref} variant="secondary">
-                  Newer
+                  {copy.pagination.newer}
                 </ShellButton>
               ) : null}
               {pagination.olderHref ? (
                 <ShellButton href={pagination.olderHref} variant="secondary">
-                  Older
+                  {copy.pagination.older}
                 </ShellButton>
               ) : null}
             </nav>
@@ -293,48 +314,59 @@ function SearchForm({
   );
 }
 
-function ErrorBanner({ interactive, onRetry }: ErrorBannerProps) {
+function ErrorBanner({ copy, interactive, onRetry }: ErrorBannerProps) {
   return (
     <div
       className="flex flex-col gap-4 rounded-2xl bg-(--danger-soft) px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
       role="alert"
     >
       <p className="text-sm font-semibold text-(--danger)">
-        We couldn&apos;t load your documents. Please try again.
+        {copy.error.message}
       </p>
       {interactive ? (
         <ShellButton onClick={onRetry} variant="secondary">
-          Retry
+          {copy.error.retry}
         </ShellButton>
       ) : (
-        <StaticShellButton variant="secondary">Retry</StaticShellButton>
+        <StaticShellButton variant="secondary">
+          {copy.error.retry}
+        </StaticShellButton>
       )}
     </div>
   );
 }
 
-function EnvelopeGrid({ envelopes, interactive }: EnvelopeGridProps) {
+function EnvelopeGrid({ copy, envelopes, interactive }: EnvelopeGridProps) {
   return (
     <ul className="grid grid-cols-[repeat(auto-fill,minmax(15rem,1fr))] gap-4">
       {envelopes.map((envelope) => (
         <li className="min-w-0" key={envelope.id}>
-          <EnvelopeCard envelope={envelope} interactive={interactive} />
+          <EnvelopeCard
+            copy={copy}
+            envelope={envelope}
+            interactive={interactive}
+          />
         </li>
       ))}
       <li className="min-w-0">
-        <UploadCard interactive={interactive} />
+        <UploadCard copy={copy} interactive={interactive} />
       </li>
     </ul>
   );
 }
 
 function EnvelopeCard({
+  copy,
   envelope,
   interactive,
 }: {
+  copy: DashboardCopy;
   envelope: DashboardEnvelopeListItem;
   interactive: boolean;
 }) {
+  const status = envelope.expired
+    ? copy.card.statuses.expired
+    : copy.card.statuses[envelope.status];
   const content = (
     <>
       <span className="flex h-52 items-center justify-center rounded-2xl bg-(--surface) p-3.5 transition group-hover:bg-[#f0f0f6]">
@@ -358,7 +390,7 @@ function EnvelopeCard({
         </span>
         {envelope.senderLabel ? (
           <span className="block truncate text-[0.8125rem] text-(--secondary)">
-            <span className="sr-only">Sent by </span>
+            <span className="sr-only">{copy.card.sentBy}</span>{" "}
             {envelope.senderLabel}
           </span>
         ) : null}
@@ -369,9 +401,7 @@ function EnvelopeCard({
 
       <span className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 px-1 pb-0.5">
         <span
-          aria-label={`Status: ${
-            envelope.expired ? "Expired" : statusLabelMap[envelope.status]
-          }`}
+          aria-label={formatMessage(copy.card.status, { status })}
           className={cn(
             "pill",
             envelope.expired
@@ -382,7 +412,7 @@ function EnvelopeCard({
           {envelope.statusLabel}
         </span>
         <span className="text-xs text-(--tertiary)">
-          <span className="sr-only">Created </span>
+          <span className="sr-only">{copy.card.created}</span>{" "}
           {envelope.createdAtLabel}
         </span>
       </span>
@@ -409,13 +439,19 @@ function EnvelopeCard({
 }
 
 /** The last tile in the grid: the way to add the next document. */
-function UploadCard({ interactive }: { interactive: boolean }) {
+function UploadCard({
+  copy,
+  interactive,
+}: {
+  copy: DashboardCopy;
+  interactive: boolean;
+}) {
   const content = (
     <>
       <span className="inline-flex size-11 items-center justify-center rounded-[0.875rem] bg-(--accent-soft) text-(--accent)">
         <PlusIcon aria-hidden="true" className="size-5" strokeWidth={2.4} />
       </span>
-      Upload a PDF
+      {copy.upload}
     </>
   );
   const className =
@@ -438,24 +474,24 @@ function UploadCard({ interactive }: { interactive: boolean }) {
   );
 }
 
-function NoResultsState({ interactive, onReset }: NoResultsStateProps) {
+function NoResultsState({ copy, interactive, onReset }: NoResultsStateProps) {
   return (
     <div className="panel px-6 py-12 text-center">
       <div className="mx-auto max-w-md space-y-3">
         <h2 className="text-xl font-extrabold tracking-[-0.02em] text-(--fg)">
-          No documents match your search
+          {copy.empty.results.title}
         </h2>
         <p className="text-sm leading-6 text-(--secondary)">
-          Try a different title, signer email, or status filter.
+          {copy.empty.results.description}
         </p>
         <div className="flex justify-center pt-2">
           {interactive ? (
             <ShellButton onClick={onReset} variant="secondary">
-              Reset filters
+              {copy.empty.results.reset}
             </ShellButton>
           ) : (
             <StaticShellButton variant="secondary">
-              Reset filters
+              {copy.empty.results.reset}
             </StaticShellButton>
           )}
         </div>

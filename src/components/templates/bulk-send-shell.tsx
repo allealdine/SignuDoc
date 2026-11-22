@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState, type ChangeEvent } from "react";
+import { type ChangeEvent, useRef, useState } from "react";
 
 import { ShellButton } from "@/components/shared/form-shell";
 import { PageHeader } from "@/components/shared/page-header";
@@ -32,8 +32,8 @@ import {
   DEFAULT_ENVELOPE_REMINDER_DAYS,
   ENVELOPE_DEADLINE_DAY_OPTIONS,
   ENVELOPE_REMINDER_DAY_OPTIONS,
-  signatureMeanings,
   type SignatureMeaning,
+  signatureMeanings,
 } from "@/lib/types/domain";
 
 type BulkSendRequest = {
@@ -214,7 +214,9 @@ export function BulkSendShell({
       method: "POST",
     });
     const payload = (await response.json().catch(() => null)) as
-      (BulkSendResult & { error?: string }) | { error?: string } | null;
+      | (BulkSendResult & { error?: string })
+      | { error?: string }
+      | null;
 
     if (!response.ok) {
       throw new Error(payload?.error ?? genericError);

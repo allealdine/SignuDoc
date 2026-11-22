@@ -3,11 +3,11 @@
 import { DownloadIcon } from "lucide-react";
 import Image from "next/image";
 import {
+  type ReactNode,
   type PointerEvent as ReactPointerEvent,
   useEffect,
   useRef,
   useState,
-  type ReactNode,
 } from "react";
 
 import {
@@ -24,13 +24,15 @@ import {
   beginDocumentPanGesture,
   clampDocumentZoomLevel,
   DEFAULT_DOCUMENT_ZOOM_LEVEL,
+  DOCUMENT_ZOOM_STEP,
+  type DocumentPanGesture,
   DocumentZoomControls,
   endDocumentPanGesture,
   moveDocumentPanGesture,
-  type DocumentPanGesture,
-  DOCUMENT_ZOOM_STEP,
 } from "@/components/shared/document-viewport";
 import { FieldShell, ShellButton } from "@/components/shared/form-shell";
+import { SigningStateScreen } from "@/components/signing/signing-state-screen";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -38,24 +40,24 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { SigningStateScreen } from "@/components/signing/signing-state-screen";
-import {
-  type SigningCurrentField,
-  type SigningPayload,
-  type SigningVisibleField,
-} from "@/lib/schemas/signing";
-import { type SigningSubmission } from "@/lib/schemas/field";
-import {
-  countAnswerableFields,
-  isNumberEntry,
-  NUMBER_ENTRY_MESSAGE,
-} from "@/lib/field-choices";
+import { countAnswerableFields, isNumberEntry } from "@/lib/field-choices";
+import { formatMessage } from "@/lib/i18n/format.ts";
+import type { Messages } from "@/lib/i18n/locales/en.ts";
+import { useMessages } from "@/lib/i18n/messages-provider.tsx";
+import { intlLocales } from "@/lib/i18n/types.ts";
 import { getInitials } from "@/lib/initials";
+import type { SigningSubmission } from "@/lib/schemas/field";
+import type {
+  SigningCurrentField,
+  SigningPayload,
+  SigningVisibleField,
+} from "@/lib/schemas/signing";
 import { truncateToWholeCharacters } from "@/lib/text-truncate";
 import { postToEmbedParent } from "./embed-parent-message";
+
+type LiveCopy = Messages["signing"]["live"];
 
 const typedSignatureFont =
   '"Snell Roundhand", "Brush Script MT", "Segoe Script", cursive';
@@ -84,16 +86,13 @@ type PositionedSigningField = {
   width: string;
 };
 
-const defaultSubmitErrorMessage =
-  "We couldn't finish signing right now. Reload the page or request a fresh signing link from the sender.";
-const defaultDeclineErrorMessage =
-  "We couldn't record your decline right now. Reload the page or request a fresh signing link from the sender.";
 /** What a signer sees once their decline is recorded. */
-export const declinedConfirmation = {
-  description:
-    "Your decline has been recorded. No further action is needed, and this link no longer opens the document.",
-  title: "You declined to sign",
-};
+function getDeclinedConfirmation(copy: LiveCopy["declinedConfirmation"]) {
+  return {
+    description: copy.description,
+    title: copy.title,
+  };
+}
 const compactFieldHeightThreshold = 0.045;
 const compactFieldWidthThreshold = 0.12;
 
@@ -127,6 +126,7 @@ function shouldShowInlineFieldValue(
 
 function getCanvasFieldLabel(
   field: Pick<SigningCurrentField | SigningVisibleField, "label" | "type">,
+  labels: LiveCopy["field"]["canvasLabels"],
 ) {
   if (field.label?.trim()) {
     return field.label;
@@ -134,25 +134,25 @@ function getCanvasFieldLabel(
 
   switch (field.type) {
     case "signature":
-      return "Sign";
+      return labels.signature;
     case "initials":
-      return "Initial";
+      return labels.initials;
     case "date":
-      return "Date";
+      return labels.date;
     case "name":
-      return "Name";
+      return labels.name;
     case "text":
-      return "Text";
+      return labels.text;
     case "checkbox":
-      return "Checkbox";
+      return labels.checkbox;
     case "number":
-      return "Number";
+      return labels.number;
     case "dropdown":
-      return "Choose";
+      return labels.dropdown;
     case "radio":
-      return "Option";
+      return labels.radio;
     default:
-      return "Field";
+      return labels.fallback;
   }
 }
 
@@ -168,6 +168,7 @@ function getSignatureFieldType(
 
 function getFieldLabel(
   field: Pick<SigningCurrentField, "label" | "type">,
+  labels: LiveCopy["field"]["inputLabels"],
 ): string {
   if (field.label?.trim()) {
     return field.label;
@@ -175,25 +176,25 @@ function getFieldLabel(
 
   switch (field.type) {
     case "signature":
-      return "Sign here";
+      return labels.signature;
     case "initials":
-      return "Initial here";
+      return labels.initials;
     case "date":
-      return "Date";
+      return labels.date;
     case "name":
-      return "Name";
+      return labels.name;
     case "text":
-      return "Enter text";
+      return labels.text;
     case "checkbox":
-      return "Checkbox";
+      return labels.checkbox;
     case "number":
-      return "Enter a number";
+      return labels.number;
     case "dropdown":
-      return "Choose one";
+      return labels.dropdown;
     case "radio":
-      return "Option";
+      return labels.radio;
     default:
-      return "Field";
+      return labels.fallback;
   }
 }
 
@@ -231,8 +232,8 @@ function withoutKey(record: Record<string, number>, key: string) {
   return next;
 }
 
-function describeTooLongAnswer(maxCharacters: number) {
-  return `This answer is too long to fit in its box on the document. Shorten it to ${maxCharacters} characters or fewer.`;
+function describeTooLongAnswer(maxCharacters: number, template: string) {
+  return formatMessage(template, { maxCharacters });
 }
 
 /** A number field holding something that is not a number. */
@@ -245,28 +246,31 @@ function hasInvalidNumber(
   return field.type === "number" && value.length > 0 && !isNumberEntry(value);
 }
 
-function getSummaryLabel(field: SigningCurrentField) {
+function getSummaryLabel(
+  field: SigningCurrentField,
+  labels: LiveCopy["field"]["summaryLabels"],
+) {
   switch (field.type) {
     case "signature":
-      return "Signature";
+      return labels.signature;
     case "initials":
-      return "Initials";
+      return labels.initials;
     case "date":
-      return "Date";
+      return labels.date;
     case "name":
-      return "Name";
+      return labels.name;
     case "text":
-      return "Text input";
+      return labels.textInput;
     case "checkbox":
-      return "Checkbox";
+      return labels.checkbox;
     case "number":
-      return "Number";
+      return labels.number;
     case "dropdown":
-      return "Dropdown";
+      return labels.dropdown;
     case "radio":
-      return "Choice";
+      return labels.choice;
     default:
-      return "Field";
+      return labels.fallback;
   }
 }
 
@@ -295,14 +299,21 @@ function getCompletionValue(
   fields: readonly SigningCurrentField[],
   {
     checkboxValues,
+    labels,
     localDateLabel,
     signatureValues,
     signerName,
     textValues,
-  }: EnteredValues & { localDateLabel: string; signerName: string },
+  }: EnteredValues & {
+    labels: LiveCopy["field"];
+    localDateLabel: string;
+    signerName: string;
+  },
 ) {
+  const values = labels.completionValues;
+
   if (field.type === "signature" || field.type === "initials") {
-    return signatureValues[field.id]?.value ?? "Tap to sign";
+    return signatureValues[field.id]?.value ?? values.tapToSign;
   }
 
   if (field.type === "name") {
@@ -310,21 +321,21 @@ function getCompletionValue(
   }
 
   if (field.type === "text") {
-    return textValues[field.id]?.trim() || "Enter text";
+    return textValues[field.id]?.trim() || values.enterText;
   }
 
   if (field.type === "number") {
     return hasInvalidNumber(field, textValues)
-      ? "Not a number"
-      : textValues[field.id]?.trim() || "Enter a number";
+      ? values.notANumber
+      : textValues[field.id]?.trim() || values.enterANumber;
   }
 
   if (field.type === "dropdown") {
-    return textValues[field.id]?.trim() || "Choose one";
+    return textValues[field.id]?.trim() || values.chooseOne;
   }
 
   if (field.type === "checkbox") {
-    return checkboxValues[field.id] ? "Checked" : "Optional";
+    return checkboxValues[field.id] ? values.checked : values.optional;
   }
 
   if (field.type === "radio") {
@@ -332,7 +343,9 @@ function getCompletionValue(
       (button) => checkboxValues[button.id],
     );
 
-    return chosen ? getFieldLabel(chosen) : "Choose one";
+    return chosen
+      ? getFieldLabel(chosen, labels.inputLabels)
+      : values.chooseOne;
   }
 
   return localDateLabel;
@@ -385,12 +398,15 @@ function isFieldComplete(
   return true;
 }
 
-function getVisibleFieldValue(field: SigningVisibleField) {
+function getVisibleFieldValue(
+  field: SigningVisibleField,
+  labels: LiveCopy["field"],
+) {
   if (field.type === "checkbox" || field.type === "radio") {
-    return field.checked ? "Checked" : "Unchecked";
+    return field.checked ? labels.completionValues.checked : labels.unchecked;
   }
 
-  return field.value?.trim() || getFieldLabel(field);
+  return field.value?.trim() || getFieldLabel(field, labels.inputLabels);
 }
 
 function buildSigningSubmissionPayload(
@@ -461,21 +477,25 @@ function buildSigningSubmissionPayload(
 
 /** Why a signer came back from their signing provider without signing. */
 export type ProviderSignatureProblem =
-  "cancelled" | "expired" | "failed" | "name";
+  | "cancelled"
+  | "expired"
+  | "failed"
+  | "name";
 
 function describeProviderProblem(
   problem: ProviderSignatureProblem,
   providerName: string,
+  templates: LiveCopy["providerProblems"],
 ): string {
   switch (problem) {
     case "cancelled":
-      return `You did not finish signing at ${providerName}. Nothing was signed, so you can try again.`;
+      return formatMessage(templates.cancelled, { providerName });
     case "expired":
-      return "Your earlier signing session ended before it finished. Nothing was signed, so you can try again.";
+      return templates.expired;
     case "name":
-      return `The certificate you signed with at ${providerName} is not in the name this document was sent to. Nothing was signed. If the name is wrong, ask the sender to send the document again under the name on your certificate.`;
+      return formatMessage(templates.name, { providerName });
     default:
-      return `${providerName} could not complete your signature. Nothing was signed. Try again, or ask the sender for help.`;
+      return formatMessage(templates.failed, { providerName });
   }
 }
 
@@ -489,6 +509,8 @@ export function SigningLiveShell({
   record: SigningPayload;
   signatureProblem?: ProviderSignatureProblem | null;
 }) {
+  const { locale, messages } = useMessages();
+  const copy = messages.signing.live;
   const [hasDeclined, setHasDeclined] = useState(false);
   const [activePage, setActivePage] = useState(
     record.currentSignerFields[0]?.page ??
@@ -549,7 +571,7 @@ export function SigningLiveShell({
   const [drawnSignatureVersion, setDrawnSignatureVersion] = useState(0);
   const [zoomLevel, setZoomLevel] = useState(DEFAULT_DOCUMENT_ZOOM_LEVEL);
   const [localDateLabel] = useState(() =>
-    new Intl.DateTimeFormat("en-US", {
+    new Intl.DateTimeFormat(intlLocales[locale], {
       day: "numeric",
       month: "long",
       year: "numeric",
@@ -837,7 +859,7 @@ export function SigningLiveShell({
           return;
         }
 
-        setSubmitError(payload?.error ?? defaultSubmitErrorMessage);
+        setSubmitError(payload?.error ?? copy.defaultSubmitErrorMessage);
         setReauthPassword("");
         setIsSubmitting(false);
         return;
@@ -845,7 +867,7 @@ export function SigningLiveShell({
 
       if (providerSignature) {
         if (!payload?.redirectUrl) {
-          setSubmitError(defaultSubmitErrorMessage);
+          setSubmitError(copy.defaultSubmitErrorMessage);
           setIsSubmitting(false);
           return;
         }
@@ -868,7 +890,7 @@ export function SigningLiveShell({
       leavingOnPurposeRef.current = true;
       window.location.assign(payload?.redirectPath ?? fallbackRedirectPath);
     } catch {
-      setSubmitError(defaultSubmitErrorMessage);
+      setSubmitError(copy.defaultSubmitErrorMessage);
       setIsSubmitting(false);
     }
   }
@@ -889,15 +911,13 @@ export function SigningLiveShell({
       } | null;
 
       if (!response.ok || typeof payload?.consentedAt !== "number") {
-        setConsentError(
-          payload?.error ?? "Your agreement could not be saved right now.",
-        );
+        setConsentError(payload?.error ?? copy.defaultConsentErrorMessage);
         return;
       }
 
       setConsentedAt(payload.consentedAt);
     } catch {
-      setConsentError("Your agreement could not be saved right now.");
+      setConsentError(copy.defaultConsentErrorMessage);
     } finally {
       setIsSavingConsent(false);
     }
@@ -933,7 +953,7 @@ export function SigningLiveShell({
           return;
         }
 
-        setDeclineError(payload?.error ?? defaultDeclineErrorMessage);
+        setDeclineError(payload?.error ?? copy.defaultDeclineErrorMessage);
         setIsDeclining(false);
         return;
       }
@@ -951,7 +971,7 @@ export function SigningLiveShell({
       // recorded (issue #55).
       setHasDeclined(true);
     } catch {
-      setDeclineError(defaultDeclineErrorMessage);
+      setDeclineError(copy.defaultDeclineErrorMessage);
       setIsDeclining(false);
     }
   }
@@ -989,11 +1009,13 @@ export function SigningLiveShell({
   }
 
   if (hasDeclined) {
+    const confirmation = getDeclinedConfirmation(copy.declinedConfirmation);
+
     return (
       <SigningStateScreen
-        description={declinedConfirmation.description}
+        description={confirmation.description}
         focusHeading
-        title={declinedConfirmation.title}
+        title={confirmation.title}
       />
     );
   }
@@ -1009,7 +1031,9 @@ export function SigningLiveShell({
                 {record.envelopeTitle}
               </p>
               <p className="mt-0.5 truncate text-[0.8125rem] text-(--tertiary)">
-                From {record.senderName}
+                {formatMessage(copy.fromSender, {
+                  senderName: record.senderName,
+                })}
               </p>
             </div>
           </div>
@@ -1020,7 +1044,7 @@ export function SigningLiveShell({
               href={`${record.documentUrl}?download=1`}
             >
               <DownloadIcon aria-hidden="true" className="size-4" />
-              <span className="sr-only sm:not-sr-only">Download PDF</span>
+              <span className="sr-only sm:not-sr-only">{copy.downloadPdf}</span>
             </a>
             <ShellButton
               className="min-h-11 px-4"
@@ -1031,7 +1055,7 @@ export function SigningLiveShell({
               }}
               variant="secondary"
             >
-              Decline
+              {copy.decline.toolbarButton}
             </ShellButton>
           </div>
         </div>
@@ -1043,6 +1067,7 @@ export function SigningLiveShell({
             {describeProviderProblem(
               signatureProblem,
               providerSignature.providerName,
+              copy.providerProblems,
             )}
           </div>
         ) : null}
@@ -1069,7 +1094,7 @@ export function SigningLiveShell({
 
                 <div className="flex items-center justify-center gap-3">
                   <button
-                    aria-label="Previous page"
+                    aria-label={copy.aria.previousPage}
                     className="btn-quiet size-10 px-0"
                     disabled={activePage === 1}
                     onClick={() =>
@@ -1080,13 +1105,16 @@ export function SigningLiveShell({
                     <ChevronLeftIcon className="size-4" />
                   </button>
                   <div className="min-w-[7.5rem] text-center">
-                    <p className="sr-only">Document page</p>
+                    <p className="sr-only">{copy.aria.documentPage}</p>
                     <p className="text-sm font-bold text-(--fg)">
-                      {`Page ${activePage} of ${record.pageCount}`}
+                      {formatMessage(copy.pageLabel, {
+                        page: activePage,
+                        total: record.pageCount,
+                      })}
                     </p>
                   </div>
                   <button
-                    aria-label="Next page"
+                    aria-label={copy.aria.nextPage}
                     className="btn-quiet size-10 px-0"
                     disabled={activePage === record.pageCount}
                     onClick={() =>
@@ -1102,6 +1130,7 @@ export function SigningLiveShell({
 
                 <div className="flex justify-center xl:justify-end">
                   <SigningToolbarStatus
+                    copy={copy}
                     hasLockedFields={pageVisibleFields.length > 0}
                     pageHasNoFields={
                       isDocumentReady &&
@@ -1158,7 +1187,11 @@ export function SigningLiveShell({
 
                       {isDocumentReady
                         ? pageVisibleFields.map((field) => (
-                            <VisibleFieldStamp field={field} key={field.id} />
+                            <VisibleFieldStamp
+                              copy={copy}
+                              field={field}
+                              key={field.id}
+                            />
                           ))
                         : null}
 
@@ -1166,6 +1199,7 @@ export function SigningLiveShell({
                         ? pageCurrentFields.map((field) => (
                             <CurrentSignerField
                               checkboxValue={Boolean(checkboxValues[field.id])}
+                              copy={copy}
                               field={field}
                               key={field.id}
                               localDateLabel={localDateLabel}
@@ -1174,6 +1208,7 @@ export function SigningLiveShell({
                                 tooLongAnswers[field.id] !== undefined
                                   ? describeTooLongAnswer(
                                       tooLongAnswers[field.id]!,
+                                      copy.document.fieldAnswerTooLong,
                                     )
                                   : null
                               }
@@ -1226,7 +1261,7 @@ export function SigningLiveShell({
 
           <aside className="min-w-0 space-y-4 xl:sticky xl:top-[5.25rem] xl:self-start">
             <section className="panel rounded-[1.25rem] p-5">
-              <p className="section-eyebrow">Current signer</p>
+              <p className="section-eyebrow">{copy.currentSigner}</p>
               <div className="mt-3 flex items-center gap-3">
                 <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-(--accent-soft) text-[0.9375rem] font-bold text-(--accent-ink)">
                   {getSignerInitials(record.signer.name)}
@@ -1242,19 +1277,25 @@ export function SigningLiveShell({
               </div>
 
               <div className="well mt-5 p-4">
-                <p className="section-eyebrow">Ready to finish</p>
+                <p className="section-eyebrow">{copy.document.readyToFinish}</p>
                 <p className="mt-1.5 text-[0.9375rem] font-bold text-(--fg)">
                   {remainingFields === 0
-                    ? "All required fields complete"
-                    : `${remainingFields} required field${remainingFields === 1 ? "" : "s"} remaining`}
+                    ? copy.document.allRequiredComplete
+                    : formatMessage(
+                        remainingFields === 1
+                          ? copy.document.remainingFieldsOne
+                          : copy.document.remainingFieldsMany,
+                        { count: remainingFields },
+                      )}
                 </p>
                 {invalidNumberCount > 0 ? (
                   <p
                     className="mt-1.5 text-[0.8125rem] font-semibold leading-5 text-(--danger)"
                     role="alert"
                   >
-                    A number field marked in red does not hold a number.{" "}
-                    {NUMBER_ENTRY_MESSAGE}
+                    {formatMessage(copy.document.invalidNumberNotice, {
+                      numberEntryMessage: copy.document.numberEntryMessage,
+                    })}
                   </p>
                 ) : null}
                 {tooLongFields.map((field) => (
@@ -1263,9 +1304,10 @@ export function SigningLiveShell({
                     key={field.id}
                     role="alert"
                   >
-                    A text box on page {field.page} is full: shorten your answer
-                    to {tooLongAnswers[field.id]} characters or fewer so all of
-                    it fits on the document.
+                    {formatMessage(copy.document.textFieldTooLong, {
+                      page: field.page,
+                      count: tooLongAnswers[field.id],
+                    })}
                   </p>
                 ))}
                 <div
@@ -1280,8 +1322,7 @@ export function SigningLiveShell({
                   />
                 </div>
                 <p className="mt-3 text-[0.8125rem] leading-5 text-(--secondary)">
-                  Previous signer values stay visible but locked. Only your
-                  assigned fields are interactive.
+                  {copy.document.lockedValuesHelper}
                 </p>
               </div>
 
@@ -1294,14 +1335,14 @@ export function SigningLiveShell({
                     setIsFinishDialogOpen(true);
                   }}
                 >
-                  Finish
+                  {copy.finish.button}
                 </ShellButton>
               </div>
             </section>
 
             <section className="panel rounded-[1.25rem] p-5">
               <div className="flex items-center justify-between gap-3">
-                <p className="section-eyebrow">Assigned fields</p>
+                <p className="section-eyebrow">{copy.assignedFields}</p>
                 <span className="pill pill-neutral">
                   {actionSummaryFields.length}
                 </span>
@@ -1309,6 +1350,7 @@ export function SigningLiveShell({
               <div className="mt-3 space-y-2">
                 {actionSummaryFields.map((field) => (
                   <FieldStatusRow
+                    copy={copy.fieldStatus}
                     isComplete={isFieldComplete(
                       field,
                       record.currentSignerFields,
@@ -1316,12 +1358,16 @@ export function SigningLiveShell({
                     )}
                     isInvalid={isInvalidEntry(field)}
                     key={field.id}
-                    label={`${getSummaryLabel(field)} · Page ${field.page}`}
+                    label={formatMessage(copy.finish.summaryRowLabel, {
+                      label: getSummaryLabel(field, copy.field.summaryLabels),
+                      page: field.page,
+                    })}
                     value={getCompletionValue(
                       field,
                       record.currentSignerFields,
                       {
                         ...enteredValues,
+                        labels: copy.field,
                         localDateLabel,
                         signerName: record.signer.name,
                       },
@@ -1338,6 +1384,7 @@ export function SigningLiveShell({
 
       {signatureModal ? (
         <SignatureModal
+          copy={copy}
           existingEntry={
             signatureValues[signatureModal.fieldId] ??
             reusableSignatureEntries[signatureModal.type] ??
@@ -1378,8 +1425,11 @@ export function SigningLiveShell({
 
       {isFinishDialogOpen ? (
         <DialogFrame
-          description={`You are signing "${record.envelopeTitle}" from ${record.senderName}.`}
-          title="Finish signing?"
+          description={formatMessage(copy.finish.description, {
+            envelopeTitle: record.envelopeTitle,
+            senderName: record.senderName,
+          })}
+          title={copy.finish.title}
           onClose={() => {
             if (isSubmitting) {
               return;
@@ -1392,30 +1442,29 @@ export function SigningLiveShell({
           {providerSignature ? (
             <div className="grid gap-3 text-sm leading-6 text-(--secondary)">
               <p>
-                This document asks for{" "}
-                {providerSignature.level === "qualified"
-                  ? "a qualified electronic signature"
-                  : "an advanced electronic signature"}
-                , made with a certificate in your own name.
+                {formatMessage(copy.finish.providerSignatureIntro, {
+                  signatureLevel:
+                    providerSignature.level === "qualified"
+                      ? copy.finish.signatureLevels.qualified
+                      : copy.finish.signatureLevels.advanced,
+                })}
               </p>
               <p>
-                Next, {providerSignature.providerName} asks you to confirm who
-                you are and to approve the signature. When it is done, you come
-                back here. By continuing, you confirm that your signature is
-                intended to be binding for this document.
+                {formatMessage(copy.finish.providerBindingNotice, {
+                  providerName: providerSignature.providerName,
+                })}
               </p>
             </div>
           ) : (
             <p className="text-sm leading-6 text-(--secondary)">
-              By clicking Finish, you confirm that your electronic signature is
-              intended to be binding for this document.
+              {copy.finish.bindingNotice}
             </p>
           )}
           {part11 ? (
             <div className="grid gap-4">
               <div className="well rounded-xl px-3.5 py-3">
                 <p className="text-xs font-semibold text-(--tertiary)">
-                  Meaning of your signature
+                  {copy.finish.meaningHeading}
                 </p>
                 <p className="mt-0.5 text-sm font-semibold text-(--fg)">
                   {part11.meaningLabel}: {part11.meaningStatement}
@@ -1423,7 +1472,7 @@ export function SigningLiveShell({
               </div>
               <label className="flex items-start gap-3 text-sm leading-6 text-(--secondary)">
                 <Checkbox
-                  aria-label="I confirm the meaning of my signature"
+                  aria-label={copy.aria.confirmSignatureMeaning}
                   checked={isMeaningConfirmed}
                   className="mt-1"
                   disabled={isSubmitting}
@@ -1431,18 +1480,15 @@ export function SigningLiveShell({
                     setIsMeaningConfirmed(checked === true)
                   }
                 />
-                <span>
-                  I confirm this meaning. My name, the date and time, and this
-                  meaning will be printed with my signature.
-                </span>
+                <span>{copy.finish.confirmMeaningCheckbox}</span>
               </label>
               <p className="text-sm leading-6 text-(--secondary)">
-                Enter your account&apos;s email address and password to sign.
+                {copy.finish.reauthHelper}
               </p>
               <FieldShell
                 autoComplete="username"
                 disabled={isSubmitting}
-                label="Email address"
+                label={copy.finish.reauthEmailLabel}
                 name="reauth-email"
                 onChange={(event) => setReauthEmail(event.target.value)}
                 readOnly={false}
@@ -1452,7 +1498,7 @@ export function SigningLiveShell({
               <FieldShell
                 autoComplete="current-password"
                 disabled={isSubmitting}
-                label="Password"
+                label={copy.finish.reauthPasswordLabel}
                 name="reauth-password"
                 onChange={(event) => setReauthPassword(event.target.value)}
                 readOnly={false}
@@ -1475,7 +1521,7 @@ export function SigningLiveShell({
               }}
               variant="secondary"
             >
-              Back
+              {copy.finish.back}
             </ShellButton>
             <ShellButton
               disabled={!isReauthReady}
@@ -1484,11 +1530,13 @@ export function SigningLiveShell({
             >
               {providerSignature
                 ? isSubmitting
-                  ? "Preparing..."
-                  : `Continue to ${providerSignature.providerName}`
+                  ? copy.finish.preparing
+                  : formatMessage(copy.finish.continueToProvider, {
+                      providerName: providerSignature.providerName,
+                    })
                 : isSubmitting
-                  ? "Finishing..."
-                  : "Finish signing"}
+                  ? copy.finish.finishing
+                  : copy.finish.finishSigning}
             </ShellButton>
           </div>
         </DialogFrame>
@@ -1496,9 +1544,12 @@ export function SigningLiveShell({
 
       {consentedAt === null && !isDeclineDialogOpen ? (
         <DialogFrame
-          description={`${record.senderName} sent you "${record.envelopeTitle}" to sign electronically.`}
+          description={formatMessage(copy.beforeYouSign.description, {
+            envelopeTitle: record.envelopeTitle,
+            senderName: record.senderName,
+          })}
           onClose={() => undefined}
-          title="Before you sign"
+          title={copy.beforeYouSign.title}
         >
           <div className="well max-h-[45vh] space-y-4 overflow-y-auto px-4 py-4 text-sm leading-6 text-(--secondary) sm:px-5">
             {record.disclosure.sections.map((section, index) => (
@@ -1520,7 +1571,7 @@ export function SigningLiveShell({
           </div>
           <label className="flex items-start gap-3 text-sm leading-6 text-(--fg)">
             <Checkbox
-              aria-label="I agree to use electronic records and signatures"
+              aria-label={copy.aria.agreeToElectronicRecords}
               checked={isConsentChecked}
               className="mt-1"
               disabled={isSavingConsent}
@@ -1544,14 +1595,14 @@ export function SigningLiveShell({
               }}
               variant="secondary"
             >
-              Decline
+              {copy.decline.toolbarButton}
             </ShellButton>
             <ShellButton
               disabled={!isConsentChecked}
               loading={isSavingConsent}
               onClick={handleConsent}
             >
-              Agree and continue
+              {copy.finish.agreeAndContinue}
             </ShellButton>
           </div>
         </DialogFrame>
@@ -1559,8 +1610,10 @@ export function SigningLiveShell({
 
       {isDeclineDialogOpen ? (
         <DialogFrame
-          description={`The sender (${record.senderName}) will be notified that you declined. This cannot be undone.`}
-          title="Decline to sign?"
+          description={formatMessage(copy.decline.description, {
+            senderName: record.senderName,
+          })}
+          title={copy.decline.dialogTitle}
           onClose={() => {
             if (isDeclining) {
               return;
@@ -1572,7 +1625,7 @@ export function SigningLiveShell({
         >
           <label className="grid gap-1.5">
             <span className="text-[0.8125rem] font-semibold text-(--secondary)">
-              Reason (optional)
+              {copy.decline.reasonLabel}
             </span>
             <Textarea
               autoFocus
@@ -1580,7 +1633,7 @@ export function SigningLiveShell({
               id="signing-decline-reason"
               name="signing-decline-reason"
               onChange={(event) => setDeclineReason(event.target.value)}
-              placeholder="I'd like to discuss some terms first..."
+              placeholder={copy.decline.reasonPlaceholder}
               value={declineReason}
             />
           </label>
@@ -1598,14 +1651,14 @@ export function SigningLiveShell({
               }}
               variant="secondary"
             >
-              Cancel
+              {copy.decline.cancel}
             </ShellButton>
             <ShellButton
               loading={isDeclining}
               onClick={handleDeclineSigning}
               variant="danger"
             >
-              {isDeclining ? "Declining..." : "Decline to sign"}
+              {isDeclining ? copy.decline.confirming : copy.decline.confirm}
             </ShellButton>
           </div>
         </DialogFrame>
@@ -1615,10 +1668,12 @@ export function SigningLiveShell({
 }
 
 function SigningToolbarStatus({
+  copy,
   hasLockedFields,
   pageHasNoFields,
   remainingFields,
 }: {
+  copy: LiveCopy;
   hasLockedFields: boolean;
   pageHasNoFields: boolean;
   remainingFields: number;
@@ -1657,15 +1712,20 @@ function SigningToolbarStatus({
       <div className="min-w-0">
         <p className="text-[0.8125rem] font-bold leading-tight text-(--fg)">
           {remainingFields === 0
-            ? "Ready to finish"
-            : `${remainingFields} required remaining`}
+            ? copy.toolbar.readyToFinish
+            : formatMessage(
+                remainingFields === 1
+                  ? copy.toolbar.remainingOne
+                  : copy.toolbar.remainingMany,
+                { count: remainingFields },
+              )}
         </p>
         <p className="text-xs leading-tight text-(--tertiary)">
           {pageHasNoFields
-            ? "No fields on this page"
+            ? copy.toolbar.noFieldsOnPage
             : hasLockedFields
-              ? "Locked values visible"
-              : "Current signer view"}
+              ? copy.toolbar.signedValuesVisible
+              : copy.toolbar.currentSignerView}
         </p>
       </div>
     </div>
@@ -1674,6 +1734,7 @@ function SigningToolbarStatus({
 
 function CurrentSignerField({
   checkboxValue,
+  copy,
   field,
   isInvalid,
   localDateLabel,
@@ -1686,6 +1747,7 @@ function CurrentSignerField({
   tooLongMessage = null,
 }: {
   checkboxValue: boolean;
+  copy: LiveCopy;
   field: SigningCurrentField;
   /** True for a number field holding something that is not a number. */
   isInvalid: boolean;
@@ -1707,7 +1769,7 @@ function CurrentSignerField({
   if (field.type === "signature" || field.type === "initials") {
     return (
       <button
-        aria-label={getSummaryLabel(field)}
+        aria-label={getSummaryLabel(field, copy.field.summaryLabels)}
         className={`absolute z-2 overflow-hidden rounded-[0.375rem] border-2 border-(--accent) text-(--accent-ink) transition ${
           signatureEntry?.value
             ? "bg-[rgb(var(--accent-rgb)/0.10)]"
@@ -1723,7 +1785,9 @@ function CurrentSignerField({
           signatureEntry.imageDataUrl ? (
             <span className="relative block h-full w-full">
               <Image
-                alt={`${field.type === "initials" ? "Initials" : "Signature"} preview`}
+                alt={formatMessage(copy.aria.signaturePreview, {
+                  kind: copy.field.summaryLabels[field.type],
+                })}
                 className="object-contain p-1"
                 fill
                 src={signatureEntry.imageDataUrl}
@@ -1748,7 +1812,7 @@ function CurrentSignerField({
             </span>
           ) : showInlineLabel ? (
             <span className="block max-w-full truncate px-1 text-xs font-bold">
-              {getCanvasFieldLabel(field)}
+              {getCanvasFieldLabel(field, copy.field.canvasLabels)}
             </span>
           ) : null}
         </span>
@@ -1787,12 +1851,14 @@ function CurrentSignerField({
       >
         <input
           aria-invalid={tooLongMessage ? true : undefined}
-          aria-label={getFieldLabel(field)}
+          aria-label={getFieldLabel(field, copy.field.inputLabels)}
           className="h-full w-full border-none bg-transparent px-2 text-sm text-(--fg) outline-none placeholder:text-(--placeholder)"
           id={`signing-field-${field.id}`}
           name={`signing-field-${field.id}`}
           onChange={(event) => onTextChange(event.target.value)}
-          placeholder={showInlineLabel ? getFieldLabel(field) : ""}
+          placeholder={
+            showInlineLabel ? getFieldLabel(field, copy.field.inputLabels) : ""
+          }
           value={textValue}
         />
       </div>
@@ -1809,18 +1875,18 @@ function CurrentSignerField({
         }`}
         data-signing-field="true"
         style={frame}
-        title={isInvalid ? NUMBER_ENTRY_MESSAGE : undefined}
+        title={isInvalid ? copy.document.numberEntryMessage : undefined}
       >
         <input
           aria-invalid={isInvalid ? true : undefined}
-          aria-label={getFieldLabel(field)}
+          aria-label={getFieldLabel(field, copy.field.inputLabels)}
           autoComplete="off"
           className="h-full w-full border-none bg-transparent px-2 text-sm text-(--fg) outline-none placeholder:text-(--placeholder)"
           id={`signing-field-${field.id}`}
           inputMode="decimal"
           name={`signing-field-${field.id}`}
           onChange={(event) => onTextChange(event.target.value)}
-          placeholder={showInlineLabel ? "Number" : ""}
+          placeholder={showInlineLabel ? copy.field.canvasLabels.number : ""}
           value={textValue}
         />
       </div>
@@ -1835,7 +1901,7 @@ function CurrentSignerField({
         style={frame}
       >
         <select
-          aria-label={getFieldLabel(field)}
+          aria-label={getFieldLabel(field, copy.field.inputLabels)}
           className={`h-full w-full cursor-pointer border-none bg-transparent bg-size-[0.75rem] bg-position-[right_0.25rem_center] pr-5 pl-1.5 text-sm outline-none ${
             textValue ? "text-(--fg)" : "text-(--secondary)"
           }`}
@@ -1845,7 +1911,9 @@ function CurrentSignerField({
           value={textValue}
         >
           <option value="">
-            {field.required ? "Choose one" : "No answer"}
+            {field.required
+              ? copy.field.completionValues.chooseOne
+              : copy.field.noAnswer}
           </option>
           {(field.options ?? []).map((option) => (
             <option key={option} value={option}>
@@ -1861,7 +1929,7 @@ function CurrentSignerField({
     return (
       <button
         aria-checked={checkboxValue}
-        aria-label={getFieldLabel(field)}
+        aria-label={getFieldLabel(field, copy.field.inputLabels)}
         className={`absolute z-2 flex items-center justify-center rounded-full border-2 border-(--accent) text-(--accent-ink) transition ${
           checkboxValue
             ? "bg-[rgb(var(--accent-rgb)/0.14)]"
@@ -1887,7 +1955,7 @@ function CurrentSignerField({
 
   return (
     <button
-      aria-label={getFieldLabel(field)}
+      aria-label={getFieldLabel(field, copy.field.inputLabels)}
       aria-pressed={checkboxValue}
       className={`absolute z-2 flex items-center justify-center rounded-[0.25rem] border-2 border-(--accent) text-(--accent-ink) transition ${
         checkboxValue
@@ -1919,7 +1987,13 @@ function CurrentSignerField({
   );
 }
 
-function VisibleFieldStamp({ field }: { field: SigningVisibleField }) {
+function VisibleFieldStamp({
+  copy,
+  field,
+}: {
+  copy: LiveCopy;
+  field: SigningVisibleField;
+}) {
   const frame = getFieldFrame(field);
   const showInlineLabel = shouldShowInlineFieldLabel(field);
   const showInlineValue = shouldShowInlineFieldValue(field);
@@ -1979,7 +2053,10 @@ function VisibleFieldStamp({ field }: { field: SigningVisibleField }) {
         style={frame}
       >
         <Image
-          alt={`${field.signerName} completed ${field.type}`}
+          alt={formatMessage(copy.completedAlt, {
+            signerName: field.signerName,
+            kind: copy.field.signatureKinds[field.type],
+          })}
           className="object-contain"
           fill
           src={field.imageDataUrl}
@@ -2014,11 +2091,11 @@ function VisibleFieldStamp({ field }: { field: SigningVisibleField }) {
                   : undefined,
             }}
           >
-            {getVisibleFieldValue(field)}
+            {getVisibleFieldValue(field, copy.field)}
           </p>
         ) : showInlineLabel ? (
           <p className="w-full truncate text-center text-[11px] font-semibold text-(--tertiary)">
-            {getCanvasFieldLabel(field)}
+            {getCanvasFieldLabel(field, copy.field.canvasLabels)}
           </p>
         ) : null}
       </div>
@@ -2027,6 +2104,7 @@ function VisibleFieldStamp({ field }: { field: SigningVisibleField }) {
 }
 
 function SignatureModal({
+  copy,
   existingEntry,
   drawnSignatureVersion,
   fieldType,
@@ -2037,6 +2115,7 @@ function SignatureModal({
   signatureMode,
   signerName,
 }: {
+  copy: LiveCopy;
   existingEntry?: SignatureEntry;
   drawnSignatureVersion: number;
   fieldType: "initials" | "signature";
@@ -2067,10 +2146,17 @@ function SignatureModal({
   });
   const drawPreviewMessage =
     drawnSignatureVersion === 0
-      ? "Draw with mouse or finger"
-      : `Canvas cleared ${drawnSignatureVersion} time${drawnSignatureVersion === 1 ? "" : "s"}`;
+      ? copy.signatureModal.drawWithMouseOrFinger
+      : formatMessage(
+          drawnSignatureVersion === 1
+            ? copy.signatureModal.canvasClearedOne
+            : copy.signatureModal.canvasClearedMany,
+          { count: drawnSignatureVersion },
+        );
   const typedPlaceholder =
-    fieldType === "initials" ? "Type your initials" : "Type your signature";
+    fieldType === "initials"
+      ? copy.signatureModal.typeYourInitials
+      : copy.signatureModal.typeYourSignature;
   const normalizedTypedSignatureValue = typedSignatureValue.trim();
   const canApply =
     signatureMode === "typed"
@@ -2088,9 +2174,11 @@ function SignatureModal({
 
   return (
     <DialogFrame
-      description="By signing, you agree that this electronic signature is the legal equivalent of your manual signature."
+      description={copy.signatureModal.description}
       title={
-        fieldType === "initials" ? "Add your initials" : "Add your signature"
+        fieldType === "initials"
+          ? copy.signatureModal.addInitials
+          : copy.signatureModal.addSignature
       }
       onClose={onClose}
     >
@@ -2104,13 +2192,13 @@ function SignatureModal({
             className="segmented-item h-auto min-h-10 flex-1 data-active:bg-white data-active:text-(--fg) data-active:shadow-[0_1px_3px_rgba(28,29,43,0.12)] after:hidden"
             value="typed"
           >
-            Type
+            {copy.signatureModal.typeTab}
           </TabsTrigger>
           <TabsTrigger
             className="segmented-item h-auto min-h-10 flex-1 data-active:bg-white data-active:text-(--fg) data-active:shadow-[0_1px_3px_rgba(28,29,43,0.12)] after:hidden"
             value="drawn"
           >
-            Draw
+            {copy.signatureModal.drawTab}
           </TabsTrigger>
         </TabsList>
       </Tabs>
@@ -2119,7 +2207,9 @@ function SignatureModal({
         <div className="space-y-4">
           <label className="grid gap-1.5">
             <span className="text-[0.8125rem] font-semibold text-(--secondary)">
-              {fieldType === "initials" ? "Type initials" : "Type signature"}
+              {fieldType === "initials"
+                ? copy.signatureModal.typeInitials
+                : copy.signatureModal.typeSignature}
             </span>
             <input
               autoFocus
@@ -2147,13 +2237,14 @@ function SignatureModal({
               {normalizedTypedSignatureValue || typedPlaceholder}
             </p>
             <p className="mt-4 text-xs font-medium text-(--tertiary)">
-              Rendered in signature style
+              {copy.signatureModal.renderedInStyle}
             </p>
           </div>
         </div>
       ) : (
         <div className="well p-3">
           <SignatureDrawCanvas
+            ariaLabel={copy.aria.drawSignatureCanvas}
             emptyMessage={drawPreviewMessage}
             // The canvas unmounts while the Type tab is shown, so it is seeded
             // from the drawing that Apply would use, never a stale one.
@@ -2170,7 +2261,7 @@ function SignatureModal({
               }}
               variant="ghost"
             >
-              Clear
+              {copy.signatureModal.clear}
             </ShellButton>
           </div>
         </div>
@@ -2178,7 +2269,7 @@ function SignatureModal({
 
       <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
         <ShellButton onClick={onClose} variant="secondary">
-          Cancel
+          {copy.signatureModal.cancel}
         </ShellButton>
         <ShellButton
           disabled={!canApply}
@@ -2190,8 +2281,8 @@ function SignatureModal({
                     inputMethod: "drawn",
                     value:
                       fieldType === "initials"
-                        ? "Drawn initials"
-                        : "Drawn signature",
+                        ? copy.signatureModal.drawnInitials
+                        : copy.signatureModal.drawnSignature,
                   }
                 : {
                     imageDataUrl: null,
@@ -2201,7 +2292,9 @@ function SignatureModal({
             )
           }
         >
-          {fieldType === "initials" ? "Apply initials" : "Apply signature"}
+          {fieldType === "initials"
+            ? copy.signatureModal.applyInitials
+            : copy.signatureModal.applySignature}
         </ShellButton>
       </div>
     </DialogFrame>
@@ -2209,10 +2302,12 @@ function SignatureModal({
 }
 
 function SignatureDrawCanvas({
+  ariaLabel,
   emptyMessage,
   initialDataUrl,
   onChange,
 }: {
+  ariaLabel: string;
   emptyMessage: string;
   initialDataUrl?: string | null;
   onChange: (value: string | null) => void;
@@ -2377,7 +2472,7 @@ function SignatureDrawCanvas({
   return (
     <div className="relative overflow-hidden rounded-xl border-2 border-dashed border-(--border-strong) bg-white">
       <canvas
-        aria-label="Draw signature canvas"
+        aria-label={ariaLabel}
         className="h-[220px] w-full touch-none"
         onPointerCancel={handlePointerEnd}
         onPointerDown={handlePointerDown}
@@ -2446,11 +2541,13 @@ function DialogFrame({
 }
 
 function FieldStatusRow({
+  copy,
   isComplete,
   isInvalid,
   label,
   value,
 }: {
+  copy: LiveCopy["fieldStatus"];
   isComplete: boolean;
   /** Filled in, but with something the field cannot take. */
   isInvalid: boolean;
@@ -2474,7 +2571,7 @@ function FieldStatusRow({
               : "pill-accent"
         }`}
       >
-        {isInvalid ? "Fix this" : isComplete ? "Complete" : "Required"}
+        {isInvalid ? copy.fixThis : isComplete ? copy.complete : copy.required}
       </span>
     </div>
   );

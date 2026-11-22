@@ -1,16 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
+import { formatMessage } from "@/lib/i18n/format.ts";
+import type { Messages } from "@/lib/i18n/locales/en.ts";
+import { useMessages } from "@/lib/i18n/messages-provider.tsx";
 import type { SystemAuditEvent } from "@/lib/services/system-audit";
 import {
   SESSION_IDLE_CHOICES,
   SESSION_MAX_HOURS_CHOICES,
 } from "@/lib/session-choices";
 
-// Sign-in security and the install's own audit trail. Administrators only.
+type SecurityCopy = Messages["settings"]["security"];
+type AuditCopy = SecurityCopy["audit"];
 
-const GENERIC_ERROR_MESSAGE = "Something went wrong. Please try again.";
+// Sign-in security and the install's own audit trail. Administrators only.
 
 type AuditResponse = {
   chain?:
@@ -20,54 +23,58 @@ type AuditResponse = {
   events?: SystemAuditEvent[];
 } | null;
 
-const EVENT_LABELS: Record<SystemAuditEvent["event"], string> = {
-  account_closure_requested: "Account closure requested",
-  account_deleted: "Account deleted",
-  api_key_created: "API key created",
-  api_key_revoked: "API key revoked",
-  email_domain_changed: "Email domain changed",
-  embed_origin_added: "Site allowed to embed signing",
-  embed_origin_removed: "Site no longer allowed to embed signing",
-  envelope_deleted: "Finished envelope deleted",
-  envelope_deletion_cancelled: "Envelope deletion cancelled",
-  envelope_deletion_scheduled: "Envelope deletion scheduled",
-  envelope_file_downloaded: "Another member's file downloaded",
-  identity_verification_revoked: "Identity confirmation taken back",
-  identity_verified: "Identity confirmed",
-  logo_changed: "Logo changed",
-  part11_mode_changed: "Part 11 mode changed",
-  password_changed: "Password changed",
-  password_reset: "Password reset by email link",
-  reauthentication_failed: "Wrong password while signing",
-  role_changed: "Role changed",
-  settings_changed: "Settings changed",
-  sign_in_failed: "Sign-in failed",
-  sign_in_locked: "Sign-in stopped after wrong passwords",
-  sign_in_succeeded: "Signed in",
-  sessions_revoked: "Signed out everywhere",
-  signed_out: "Signed out",
-  signing_locked: "Signing locked",
-  signing_unlocked: "Signing unlocked",
-  two_factor_backup_codes_regenerated: "New backup codes made",
-  two_factor_disabled: "Two-step sign-in turned off",
-  two_factor_enabled: "Two-step sign-in turned on",
-  two_factor_requirement_changed: "Two-step sign-in requirement changed",
-  two_factor_reset: "Two-step sign-in reset by an administrator",
-  webhook_endpoint_changed: "Webhook endpoint changed",
-  webhook_endpoint_created: "Webhook endpoint added",
-  webhook_endpoint_deleted: "Webhook endpoint removed",
+const AUDIT_EVENT_KEYS: Record<
+  SystemAuditEvent["event"],
+  keyof AuditCopy["eventLabels"]
+> = {
+  account_closure_requested: "accountClosureRequested",
+  account_deleted: "accountDeleted",
+  api_key_created: "apiKeyCreated",
+  api_key_revoked: "apiKeyRevoked",
+  email_domain_changed: "emailDomainChanged",
+  embed_origin_added: "embedOriginAdded",
+  embed_origin_removed: "embedOriginRemoved",
+  envelope_deleted: "envelopeDeleted",
+  envelope_deletion_cancelled: "envelopeDeletionCancelled",
+  envelope_deletion_scheduled: "envelopeDeletionScheduled",
+  envelope_file_downloaded: "envelopeFileDownloaded",
+  identity_verification_revoked: "identityVerificationRevoked",
+  identity_verified: "identityVerified",
+  logo_changed: "logoChanged",
+  part11_mode_changed: "part11ModeChanged",
+  password_changed: "passwordChanged",
+  password_reset: "passwordReset",
+  reauthentication_failed: "reauthenticationFailed",
+  role_changed: "roleChanged",
+  settings_changed: "settingsChanged",
+  sign_in_failed: "signInFailed",
+  sign_in_locked: "signInLocked",
+  sign_in_succeeded: "signInSucceeded",
+  sessions_revoked: "sessionsRevoked",
+  signed_out: "signedOut",
+  signing_locked: "signingLocked",
+  signing_unlocked: "signingUnlocked",
+  two_factor_backup_codes_regenerated: "twoFactorBackupCodesRegenerated",
+  two_factor_disabled: "twoFactorDisabled",
+  two_factor_enabled: "twoFactorEnabled",
+  two_factor_requirement_changed: "twoFactorRequirementChanged",
+  two_factor_reset: "twoFactorReset",
+  webhook_endpoint_changed: "webhookEndpointChanged",
+  webhook_endpoint_created: "webhookEndpointCreated",
+  webhook_endpoint_deleted: "webhookEndpointDeleted",
 };
 
-const SIGN_IN_FAILURE_REASONS: Record<string, string> = {
-  ACCOUNT_TEMPORARILY_LOCKED: "second step locked after wrong codes",
-  EMAIL_NOT_VERIFIED: "email address not confirmed yet",
-  INVALID_BACKUP_CODE: "wrong backup code",
-  INVALID_CODE: "wrong authenticator code",
-  INVALID_EMAIL_OR_PASSWORD: "wrong email or password",
-  TOO_MANY_ATTEMPTS_REQUEST_NEW_CODE: "too many wrong codes, signed out",
-};
+const SIGN_IN_FAILURE_KEYS: Record<string, keyof AuditCopy["failureReasons"]> =
+  {
+    ACCOUNT_TEMPORARILY_LOCKED: "accountTemporarilyLocked",
+    EMAIL_NOT_VERIFIED: "emailNotVerified",
+    INVALID_BACKUP_CODE: "invalidBackupCode",
+    INVALID_CODE: "invalidCode",
+    INVALID_EMAIL_OR_PASSWORD: "invalidEmailOrPassword",
+    TOO_MANY_ATTEMPTS_REQUEST_NEW_CODE: "tooManyAttempts",
+  };
 
-function describeEvent(event: SystemAuditEvent): string {
+function describeEvent(event: SystemAuditEvent, copy: AuditCopy): string {
   const metadata = event.metadata ?? {};
   const target =
     typeof metadata.targetName === "string"
@@ -77,9 +84,15 @@ function describeEvent(event: SystemAuditEvent): string {
   switch (event.event) {
     case "part11_mode_changed":
     case "two_factor_requirement_changed":
-      return metadata.to === true ? "Turned on" : "Turned off";
+      return metadata.to === true
+        ? copy.details.turnedOnShort
+        : copy.details.turnedOffShort;
     case "role_changed":
-      return `${target ?? "Account"}: ${String(metadata.from)} to ${String(metadata.to)}`;
+      return formatMessage(copy.details.roleChange, {
+        target: target ?? copy.details.account,
+        from: String(metadata.from),
+        to: String(metadata.to),
+      });
     case "settings_changed":
       return typeof metadata.changes === "object" && metadata.changes
         ? Object.keys(metadata.changes).join(", ")
@@ -89,20 +102,25 @@ function describeEvent(event: SystemAuditEvent): string {
     case "reauthentication_failed":
     case "signing_locked":
       return typeof metadata.failedAttempts === "number"
-        ? `${String(metadata.failedAttempts)} wrong in a row`
+        ? formatMessage(copy.failedAttempts, {
+            count: metadata.failedAttempts,
+          })
         : "";
     case "sign_in_failed":
       return typeof metadata.reason === "string"
-        ? (SIGN_IN_FAILURE_REASONS[metadata.reason] ?? metadata.reason)
+        ? (copy.failureReasons[SIGN_IN_FAILURE_KEYS[metadata.reason]] ??
+            metadata.reason)
         : "";
     case "sign_in_succeeded":
       return metadata.secondStep === "backup_code"
-        ? "with a backup code"
+        ? copy.signInMethods.backupCode
         : metadata.secondStep === "authenticator"
-          ? "with an authenticator code"
+          ? copy.signInMethods.authenticator
           : "";
     case "logo_changed":
-      return metadata.action === "removed" ? "Removed" : "Replaced";
+      return metadata.action === "removed"
+        ? copy.details.logoRemoved
+        : copy.details.logoReplaced;
     case "email_domain_changed":
       return typeof metadata.domain === "string" ? metadata.domain : "";
     case "api_key_created":
@@ -111,7 +129,7 @@ function describeEvent(event: SystemAuditEvent): string {
         typeof metadata.name === "string" ? metadata.name : null,
         typeof metadata.prefix === "string" ? `${metadata.prefix}…` : null,
         metadata.reason === "role_removed"
-          ? "owner is no longer an administrator"
+          ? copy.details.ownerNoLongerAdmin
           : null,
       ]
         .filter(Boolean)
@@ -125,13 +143,17 @@ function describeEvent(event: SystemAuditEvent): string {
       return [
         typeof metadata.url === "string" ? metadata.url : null,
         Array.isArray(metadata.events)
-          ? `events: ${metadata.events.filter((type) => typeof type === "string").join(", ")}`
+          ? formatMessage(copy.eventsPrefix, {
+              events: metadata.events
+                .filter((type) => typeof type === "string")
+                .join(", "),
+            })
           : null,
-        metadata.secretRotated === true ? "new signing secret" : null,
+        metadata.secretRotated === true ? copy.details.newSecret : null,
         metadata.enabled === false
-          ? "turned off"
+          ? copy.details.turnedOff
           : metadata.enabled === true
-            ? "turned on"
+            ? copy.details.turnedOn
             : null,
       ]
         .filter(Boolean)
@@ -142,7 +164,7 @@ function describeEvent(event: SystemAuditEvent): string {
         typeof metadata.status === "string" ? metadata.status : null,
         typeof metadata.reason === "string" ? metadata.reason : null,
         typeof metadata.ownerEmail === "string"
-          ? `sent by ${metadata.ownerEmail}`
+          ? formatMessage(copy.sentBy, { email: metadata.ownerEmail })
           : null,
       ]
         .filter(Boolean)
@@ -152,11 +174,20 @@ function describeEvent(event: SystemAuditEvent): string {
       return [
         typeof metadata.title === "string" ? `"${metadata.title}"` : null,
         typeof metadata.deleteAfter === "number"
-          ? `${event.event === "envelope_deletion_scheduled" ? "to be deleted" : "was due"} on ${new Date(metadata.deleteAfter * 1000).toISOString().slice(0, 10)}`
+          ? formatMessage(
+              event.event === "envelope_deletion_scheduled"
+                ? copy.deletion.scheduled
+                : copy.deletion.cancelled,
+              {
+                date: new Date(metadata.deleteAfter * 1000)
+                  .toISOString()
+                  .slice(0, 10),
+              },
+            )
           : null,
         typeof metadata.reason === "string" ? metadata.reason : null,
         typeof metadata.ownerEmail === "string"
-          ? `sent by ${metadata.ownerEmail}`
+          ? formatMessage(copy.sentBy, { email: metadata.ownerEmail })
           : null,
       ]
         .filter(Boolean)
@@ -164,10 +195,11 @@ function describeEvent(event: SystemAuditEvent): string {
     case "envelope_file_downloaded":
       return [
         typeof metadata.file === "string"
-          ? (downloadedFileLabels[metadata.file] ?? metadata.file)
+          ? (copy.downloadFiles[DOWNLOADED_FILE_KEYS[metadata.file]] ??
+            metadata.file)
           : null,
         typeof metadata.ownerEmail === "string"
-          ? `sent by ${metadata.ownerEmail}`
+          ? formatMessage(copy.sentBy, { email: metadata.ownerEmail })
           : null,
       ]
         .filter(Boolean)
@@ -177,27 +209,30 @@ function describeEvent(event: SystemAuditEvent): string {
   }
 }
 
-const downloadedFileLabels: Record<string, string> = {
-  audit_trail: "audit trail",
+const DOWNLOADED_FILE_KEYS: Record<string, keyof AuditCopy["downloadFiles"]> = {
+  audit_trail: "auditTrail",
   evidence: "certificate",
-  original: "document as sent",
-  signed: "signed PDF",
+  original: "documentAsSent",
+  signed: "signedPdf",
 };
 
-function describeMinutes(minutes: number): string {
+function describeMinutes(
+  minutes: number,
+  copy: SecurityCopy["durations"],
+): string {
   return minutes < 60
-    ? `${String(minutes)} minutes`
+    ? formatMessage(copy.minutes, { count: minutes })
     : minutes === 60
-      ? "1 hour"
-      : `${String(minutes / 60)} hours`;
+      ? copy.hour
+      : formatMessage(copy.hours, { count: minutes / 60 });
 }
 
-function describeHours(hours: number): string {
+function describeHours(hours: number, copy: SecurityCopy["durations"]): string {
   return hours % 24 === 0
     ? hours === 24
-      ? "1 day"
-      : `${String(hours / 24)} days`
-    : `${String(hours)} hours`;
+      ? copy.day
+      : formatMessage(copy.days, { count: hours / 24 })
+    : formatMessage(copy.hours, { count: hours });
 }
 
 export function SecurityPanel({
@@ -209,6 +244,7 @@ export function SecurityPanel({
   initialSessionIdleMinutes: number | null;
   initialSessionMaxHours: number | null;
 }) {
+  const copy = useMessages().messages.settings.security;
   const [requireTwoFactor, setRequireTwoFactor] = useState(
     initialRequireTwoFactor,
   );
@@ -235,14 +271,16 @@ export function SecurityPanel({
         setAudit(
           response.ok
             ? payload
-            : { error: payload?.error ?? GENERIC_ERROR_MESSAGE },
+            : { error: payload?.error ?? copy.genericError },
         );
       })
       .catch((loadError: unknown) => {
-        if (!(
-          loadError instanceof DOMException && loadError.name === "AbortError"
-        )) {
-          setAudit({ error: GENERIC_ERROR_MESSAGE });
+        if (
+          !(
+            loadError instanceof DOMException && loadError.name === "AbortError"
+          )
+        ) {
+          setAudit({ error: copy.genericError });
         }
       });
 
@@ -265,14 +303,14 @@ export function SecurityPanel({
       } | null;
 
       if (!response.ok || typeof payload?.requireTwoFactor !== "boolean") {
-        setError(payload?.error ?? GENERIC_ERROR_MESSAGE);
+        setError(payload?.error ?? copy.genericError);
         return;
       }
 
       setRequireTwoFactor(payload.requireTwoFactor);
       setAuditRevision((value) => value + 1);
     } catch {
-      setError(GENERIC_ERROR_MESSAGE);
+      setError(copy.genericError);
     } finally {
       setIsSaving(false);
     }
@@ -296,7 +334,7 @@ export function SecurityPanel({
       } | null;
 
       if (!response.ok || payload?.sessionIdleMinutes === undefined) {
-        setError(payload?.error ?? GENERIC_ERROR_MESSAGE);
+        setError(payload?.error ?? copy.genericError);
         return;
       }
 
@@ -307,10 +345,10 @@ export function SecurityPanel({
 
       setSavedLimits(saved);
       setLimits(saved);
-      setLimitsMessage("Session limits saved.");
+      setLimitsMessage(copy.success);
       setAuditRevision((value) => value + 1);
     } catch {
-      setError(GENERIC_ERROR_MESSAGE);
+      setError(copy.genericError);
     } finally {
       setIsSaving(false);
     }
@@ -324,15 +362,10 @@ export function SecurityPanel({
     <div className="space-y-5 border-t border-(--border) pt-8" id="security">
       <div className="space-y-2">
         <h3 className="text-lg font-extrabold tracking-[-0.02em] text-(--fg)">
-          Sign-in security
+          {copy.title}
         </h3>
         <p className="max-w-2xl text-sm leading-6 text-(--secondary)">
-          Two-step sign-in asks for a code from an authenticator app (such as
-          1Password, Google Authenticator or Microsoft Authenticator) after the
-          password. When you require it, anyone who has not set it up is asked
-          to do so the next time they open the app, and can do nothing else
-          until they have. Ten wrong passwords for one email address stop
-          sign-in for it for 15 minutes either way.
+          {copy.description}
         </p>
       </div>
 
@@ -346,7 +379,7 @@ export function SecurityPanel({
         <span
           className={`pill ${requireTwoFactor ? "pill-success" : "pill-neutral"}`}
         >
-          {requireTwoFactor ? "Required for everyone" : "Optional"}
+          {requireTwoFactor ? copy.required : copy.optional}
         </span>
         <button
           className={
@@ -357,24 +390,24 @@ export function SecurityPanel({
           type="button"
         >
           {isSaving
-            ? "Saving..."
+            ? copy.saving
             : requireTwoFactor
-              ? "Stop requiring two-step sign-in"
-              : "Require two-step sign-in"}
+              ? copy.stopRequiring
+              : copy.require}
         </button>
       </div>
 
       <div className="space-y-3">
-        <h4 className="text-[0.9375rem] font-bold text-(--fg)">Sessions</h4>
+        <h4 className="text-[0.9375rem] font-bold text-(--fg)">
+          {copy.sessions.title}
+        </h4>
         <p className="max-w-2xl text-sm leading-6 text-(--secondary)">
-          How long someone stays signed in. A change applies to everyone who is
-          signed in now, from their next click. Anyone can also sign out
-          everywhere from their own Settings.
+          {copy.sessions.description}
         </p>
         <div className="grid max-w-xl gap-4 sm:grid-cols-2">
           <label className="grid gap-1.5">
             <span className="text-[0.8125rem] font-semibold text-(--secondary)">
-              Sign out after no use for
+              {copy.sessions.idleLabel}
             </span>
             <select
               className="field-input"
@@ -391,17 +424,17 @@ export function SecurityPanel({
               }}
               value={limits.sessionIdleMinutes ?? ""}
             >
-              <option value="">Never</option>
+              <option value="">{copy.sessions.never}</option>
               {SESSION_IDLE_CHOICES.map((minutes) => (
                 <option key={minutes} value={minutes}>
-                  {describeMinutes(minutes)}
+                  {describeMinutes(minutes, copy.durations)}
                 </option>
               ))}
             </select>
           </label>
           <label className="grid gap-1.5">
             <span className="text-[0.8125rem] font-semibold text-(--secondary)">
-              Sign out at the latest after
+              {copy.sessions.maxLabel}
             </span>
             <select
               className="field-input"
@@ -418,11 +451,11 @@ export function SecurityPanel({
               }}
               value={limits.sessionMaxHours ?? ""}
             >
-              <option value="">7 days (the default)</option>
+              <option value="">{copy.sessions.weekDefault}</option>
               {SESSION_MAX_HOURS_CHOICES.filter((hours) => hours !== 168).map(
                 (hours) => (
                   <option key={hours} value={hours}>
-                    {describeHours(hours)}
+                    {describeHours(hours, copy.durations)}
                   </option>
                 ),
               )}
@@ -436,7 +469,7 @@ export function SecurityPanel({
             onClick={() => void saveLimits()}
             type="button"
           >
-            {isSaving ? "Saving..." : "Save session limits"}
+            {isSaving ? copy.sessions.saving : copy.sessions.save}
           </button>
           {limitsMessage ? (
             <span className="text-sm text-(--secondary)" role="status">
@@ -449,7 +482,7 @@ export function SecurityPanel({
       <div className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h4 className="text-[0.9375rem] font-bold text-(--fg)">
-            Site audit trail
+            {copy.audit.title}
           </h4>
           <div className="flex flex-wrap gap-2">
             <button
@@ -457,18 +490,15 @@ export function SecurityPanel({
               onClick={() => setAuditRevision((value) => value + 1)}
               type="button"
             >
-              Refresh
+              {copy.audit.refresh}
             </button>
             <a className="btn-quiet" href="/api/admin/audit?format=csv">
-              Download as CSV
+              {copy.audit.csv}
             </a>
           </div>
         </div>
         <p className="max-w-2xl text-sm leading-6 text-(--secondary)">
-          Sign-ins and failed sign-ins, changes to how people sign in, and
-          changes to settings, roles, the logo, identity confirmations and
-          signing locks. Each envelope has its own trail too, which its sender
-          can export from the envelope&apos;s page.
+          {copy.audit.description}
         </p>
 
         {audit?.error ? (
@@ -483,23 +513,26 @@ export function SecurityPanel({
             role="status"
           >
             {audit.chain.ok
-              ? `Hash chain intact across ${String(audit.chain.events)} events.`
-              : `The hash chain is broken at event ${String(audit.chain.brokenAtSequence)}: a row was changed or removed.`}
+              ? formatMessage(copy.audit.intact, { count: audit.chain.events })
+              : formatMessage(copy.audit.broken, {
+                  sequence: audit.chain.brokenAtSequence,
+                })}
           </p>
         ) : null}
 
         {audit?.events ? (
           audit.events.length === 0 ? (
-            <p className="text-sm text-(--secondary)">Nothing recorded yet.</p>
+            <p className="text-sm text-(--secondary)">{copy.audit.empty}</p>
           ) : (
-            <ul aria-label="Site audit trail" className="space-y-2">
+            <ul aria-label={copy.audit.chainAriaLabel} className="space-y-2">
               {audit.events.map((event) => (
                 <li className="well p-3 text-sm" key={event.id}>
                   <p className="font-semibold text-(--fg)">
-                    {EVENT_LABELS[event.event] ?? event.event}
+                    {copy.audit.eventLabels[AUDIT_EVENT_KEYS[event.event]] ??
+                      event.event}
                     <span className="font-normal text-(--secondary)">
                       {" "}
-                      {describeEvent(event)}
+                      {describeEvent(event, copy.audit)}
                     </span>
                   </p>
                   <p className="text-xs text-(--tertiary)">

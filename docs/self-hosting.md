@@ -256,6 +256,28 @@ Each step only adds to the file, so the seal from step 1 stays intact. With a ce
 
 The lookups go to the timestamp server and the certificate authorities, outside Vercel. All of a document's lookups, the archive timestamp included, share 15 seconds (the seal's own timestamp has up to 10 seconds before that), and only answers that are current and signed by the certificate authority, or by a responder it authorized, are kept. If one fails the document keeps the seal it has and the function log says what was missing, so signing never waits on them for long. An archive timestamp keeps the evidence checkable until the timestamp server's own certificate expires, usually years later. Adding a new archive timestamp before then is not automatic yet.
 
+### What an external verifier reports on the default seal (follow-up)
+
+Recorded 22 November 2026 from a real completed document sealed on 21 November 2026 by a deployment that had neither `SEAL_P12_BASE64` nor `SEAL_TIMESTAMP_URL` set (inferred from the artifact). An external PDF validator reported:
+
+| Report                                                         | Explanation                                                                                                                                                             |
+| -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| "Document has not been modified" / "1 digital signature found" | Expected. The CAdES/PAdES seal covers the whole file and does its job.                                                                                                  |
+| "Signer: `<organization> document seal` — not trusted"         | Expected. The certificate is self-signed (subject = issuer), so a reader has no trust anchor. This is the install's **seal**, not a signature in the signer's own name. |
+| "The signature has no electronic timestamp"                    | Expected. Only the CMS `signingTime` attribute from the server clock is present, not an RFC 3161 token.                                                                 |
+| "Revocation status unknown" / "does not support LTV"           | Expected. `sealForTheLongTerm()` deliberately skips B-LT/B-LTA for a self-signed certificate: there is no CA to ask, so no DSS/OCSP/CRL data is embedded.               |
+| Certificate valid until 2046                                   | The self-signed certificate's `validYears = 20` default, not a CA policy.                                                                                               |
+
+This is a known configuration gap, not evidence of tampering. `/verify` only compares the file's SHA-256 with the stored hash; an external validator checks the PDF signature and reports trust separately, so the two answers can differ without contradicting each other.
+
+Follow-up options, **not implemented yet**:
+
+1. Set `SEAL_P12_BASE64` and `SEAL_P12_PASSWORD` from a recognized CA (PKCS#12 with an RSA key), plus `SEAL_TIMESTAMP_URL` for an RFC 3161 service. The code then adds B-T, B-LT and B-LTA automatically. Keep the `.p12` outside Vercel.
+2. Keep the self-signed seal, distribute its certificate into the organization's trust store, and rely on `/verify` plus the audit trail. Public validators will still call it untrusted.
+3. Use an eID Easy/CSC provider so each signer signs with a certificate in their own name; the install then adds no seal of its own. Not available in Part 11 mode.
+
+Already-finalized PDFs cannot be made trusted retroactively: a later archive timestamp proves existence at that later time, not that the original seal certificate was trusted. Reissue the document if a trusted result is required.
+
 ### An advanced electronic seal (eIDAS)
 
 Under eIDAS, a seal is the organization's counterpart of a signature. A seal that meets the four tests of Article 36 (linked only to your organization, identifying it, made with a key under its control, and showing any later change) is an **advanced electronic seal**. To get one:

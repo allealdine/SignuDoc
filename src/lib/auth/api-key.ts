@@ -1,11 +1,11 @@
+import { apiError } from "../api/http.ts";
 import {
+  type ApiKeyPrincipal,
+  type ApiKeyScope,
   authenticateApiKey,
   readBearerToken,
   scopeAllows,
-  type ApiKeyPrincipal,
-  type ApiKeyScope,
 } from "../api-keys.ts";
-import { apiError } from "../api/http.ts";
 import { logSecurityEvent } from "../security/logging.ts";
 import { consumeRateLimit, peekRateLimit } from "../security/rate-limit.ts";
 import { getClientIpAddress, getRequestPathname } from "../security/request.ts";

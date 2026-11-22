@@ -3,21 +3,21 @@ import { createHash } from "node:crypto";
 import test from "node:test";
 
 import { startTestPki, type TestPki } from "./pki-test-support.ts";
+import { checkSignerSignature } from "./signer-cms.ts";
 import {
   followSigner,
+  type ProviderStandIns,
   STAND_IN_CLIENT,
   startProviderStandIns,
-  type ProviderStandIns,
 } from "./signing-provider-test-support.ts";
 import {
   configuredSigningProvider,
   createCscProvider,
   createEidEasyProvider,
+  type SigningProvider,
   SigningProviderError,
   signingProviderById,
-  type SigningProvider,
 } from "./signing-providers.ts";
-import { checkSignerSignature } from "./signer-cms.ts";
 
 const RETURN_URL = "https://sign.example.org/api/signing/provider/return";
 const digest = createHash("sha256").update("revision bytes").digest();

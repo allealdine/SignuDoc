@@ -1,9 +1,11 @@
 import { OrganizationSettings } from "@/components/settings/organization-settings";
 import { SettingsShell } from "@/components/settings/settings-shell";
 import { UpdatesPanel } from "@/components/settings/updates-panel";
-import { isAdminUser } from "@/lib/auth/admin";
 import { accountClosureBlock } from "@/lib/account";
+import { isAdminUser } from "@/lib/auth/admin";
 import { getAuthSession } from "@/lib/auth/server";
+import { getMessages } from "@/lib/i18n/messages.ts";
+import { getRequestLocale } from "@/lib/i18n/request.ts";
 import { toOrganizationSettingsView } from "@/lib/organization-settings";
 import {
   getSettings,
@@ -17,8 +19,14 @@ export default async function SettingsPage() {
   const session = await getAuthSession();
   const isAdmin = session ? await isAdminUser(session.user.id) : false;
   const settings = await getSettings();
-  const closureBlockedReason = session
-    ? await accountClosureBlock(session.user).catch(() => null)
+  const [locale, blocked] = await Promise.all([
+    getRequestLocale(),
+    session
+      ? accountClosureBlock(session.user).catch(() => null)
+      : Promise.resolve(null),
+  ]);
+  const closureBlockedReason = blocked
+    ? getMessages(locale).settings.account.closure.blockedReason
     : null;
 
   return (

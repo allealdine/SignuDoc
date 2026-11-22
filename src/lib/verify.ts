@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { getDb, queryOne, type DbExecutor } from "./db/connection.ts";
+import { type DbExecutor, getDb, queryOne } from "./db/connection.ts";
 
 // The Verify page: anyone holding a copy of a finished document or
 // certificate can check that it is exactly the file this install produced.

@@ -3,11 +3,11 @@ import { ZodError } from "zod";
 
 import { getDb } from "@/lib/db/connection";
 import { logRouteError } from "@/lib/security/logging";
+import { getClientIpAddress } from "@/lib/security/request";
 import {
   applyPublicLinkRateLimit,
   buildRateLimitKey,
 } from "@/lib/security/route-controls";
-import { getClientIpAddress } from "@/lib/security/request";
 import {
   checkSigningFieldFit,
   SigningAccessError,

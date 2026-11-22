@@ -11,8 +11,8 @@ import {
   normalizeSigningSteps,
   removeListedSigner,
   routeAfterSignatures,
-  signingStepOf,
   SigningStepError,
+  signingStepOf,
 } from "./signing-steps.ts";
 import {
   DEFAULT_MAX_SIGNERS_PER_ENVELOPE,

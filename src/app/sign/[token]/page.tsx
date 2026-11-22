@@ -2,16 +2,19 @@ import { cookies, headers } from "next/headers";
 
 import { SigningShell } from "@/components/signing/signing-shell";
 import { getDb } from "@/lib/db/connection";
+import { getMessages } from "@/lib/i18n/messages.ts";
+import { MessagesProvider } from "@/lib/i18n/messages-provider.tsx";
+import { getRequestLocale } from "@/lib/i18n/request.ts";
+import type { SigningVerificationState } from "@/lib/schemas/signing";
 import {
   getClientIpAddress,
   getRequestUserAgent,
 } from "@/lib/security/request";
-import type { SigningVerificationState } from "@/lib/schemas/signing";
 import { verifiedMethodsFromCookies } from "@/lib/signer-checks";
 import {
+  getSigningPayloadForToken,
   SigningAccessError,
   SigningVerificationRequiredError,
-  getSigningPayloadForToken,
 } from "@/lib/signing";
 
 type SignPageProps = {
@@ -68,14 +71,22 @@ export default async function SignPage({
     }
   }
 
+  // The envelope's language wins over the browser's: it is the language of
+  // the invitation, the disclosure and the consent the signer records.
+  const requestLocale = await getRequestLocale();
+  const locale = record?.locale ?? requestLocale;
+  const messages = getMessages(locale);
+
   return (
-    <SigningShell
-      initialState={initialState}
-      key={token}
-      record={record ?? undefined}
-      signatureProblem={signatureProblem}
-      token={token}
-      verification={verification ?? undefined}
-    />
+    <MessagesProvider locale={locale} messages={messages}>
+      <SigningShell
+        initialState={initialState}
+        key={token}
+        record={record ?? undefined}
+        signatureProblem={signatureProblem}
+        token={token}
+        verification={verification ?? undefined}
+      />
+    </MessagesProvider>
   );
 }

@@ -161,7 +161,7 @@ DocuSign does more, and charges for it per user. SignuDoc does the everyday sign
 | **More than one document per envelope, and Word files** | — PDF only, one per envelope                                        | ✅                                                    |
 | **Web forms, payments**                                 | —                                                                   | ✅ on Business Pro                                    |
 | **Integrations**                                        | — none built in; connect your own apps through the API and webhooks | ✅ 1,000+, including Salesforce, Microsoft and Google |
-| **Languages**                                           | — signing pages in English                                          | ✅ signing in 44 languages                            |
+| **Languages**                                           | ✅ English and Indonesian signing pages, invitations and emails     | ✅ signing in 44 languages                            |
 | **Advanced and qualified signatures (eIDAS)**           | With a provider you add: eID Easy or a CSC remote signing service   | ✅                                                    |
 | **HIPAA, 21 CFR Part 11, certifications**               | Part 11 mode and a SOC 2 pack; you validate and get audited         | ✅ on Enhanced or as add-ons                          |
 | **Support**                                             | GitHub issues                                                       | ✅ 24/7 on Enhanced                                   |

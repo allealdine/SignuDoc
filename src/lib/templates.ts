@@ -22,20 +22,25 @@ import {
   describeChoiceFieldProblem,
   findChoiceFieldProblem,
 } from "./field-choices.ts";
+import { DEFAULT_LOCALE, type Locale } from "./i18n/types.ts";
 import { fieldPlacementListSchema } from "./schemas/field.ts";
 import {
   saveTemplateSchema,
+  type TemplateRole,
   templateRolesSchema,
   useTemplateSchema,
-  type TemplateRole,
 } from "./schemas/template.ts";
-import { buildTemplatePdfKey } from "./services/storage-keys.ts";
-import { normalizeSigningSteps } from "./signing-steps.ts";
 import {
   createStorageService,
   StorageObjectNotFoundError,
   type StorageService,
 } from "./services/storage.ts";
+import { buildTemplatePdfKey } from "./services/storage-keys.ts";
+import { normalizeSigningSteps } from "./signing-steps.ts";
+import {
+  buildTemplateCountLabel,
+  formatTemplateDate,
+} from "./template-labels.ts";
 
 // A template is a document, the fields placed on it and its signing order,
 // kept so the same thing can be sent again. It names no one: each place in
@@ -134,17 +139,6 @@ const TEMPLATE_COLUMNS = `
   created_at AS "createdAt"
 `;
 
-const dateFormatter = new Intl.DateTimeFormat("en-US", {
-  day: "numeric",
-  month: "short",
-  timeZone: "UTC",
-  year: "numeric",
-});
-
-function countLabel(count: number, singular: string): string {
-  return `${String(count)} ${count === 1 ? singular : `${singular}s`}`;
-}
-
 // A list must still open when one template's stored contents cannot be
 // read, so the names and the count are taken leniently here. Using a
 // template checks them properly.
@@ -201,6 +195,7 @@ async function getTemplateRow(
 export async function listTemplatesForUser(
   userId: string,
   database: DbExecutor = getDb(),
+  locale: Locale = DEFAULT_LOCALE,
 ): Promise<TemplateListItem[]> {
   const rows = await queryMany<TemplateRow>(
     database,
@@ -214,11 +209,15 @@ export async function listTemplatesForUser(
   );
 
   return rows.map((row) => ({
-    createdAtLabel: dateFormatter.format(new Date(row.createdAt * 1000)),
-    fieldCountLabel: countLabel(countFields(row.fields), "field"),
+    createdAtLabel: formatTemplateDate(row.createdAt, locale),
+    fieldCountLabel: buildTemplateCountLabel(
+      countFields(row.fields),
+      "field",
+      locale,
+    ),
     id: row.id,
     name: row.name,
-    pageCountLabel: countLabel(row.pageCount, "page"),
+    pageCountLabel: buildTemplateCountLabel(row.pageCount, "page", locale),
     roleNames: readRoleNames(row.roles),
   }));
 }
@@ -284,6 +283,7 @@ export async function getTemplateForBulkSend(
   userId: string,
   templateId: string,
   database: DbExecutor = getDb(),
+  locale: Locale = DEFAULT_LOCALE,
 ): Promise<TemplateForBulkSend | null> {
   const row = await getTemplateRow(userId, templateId, database);
 
@@ -298,11 +298,15 @@ export async function getTemplateForBulkSend(
   }
 
   return {
-    fieldCountLabel: countLabel(countFields(row.fields), "field"),
+    fieldCountLabel: buildTemplateCountLabel(
+      countFields(row.fields),
+      "field",
+      locale,
+    ),
     fields: row.fields,
     id: row.id,
     name: row.name,
-    pageCountLabel: countLabel(row.pageCount, "page"),
+    pageCountLabel: buildTemplateCountLabel(row.pageCount, "page", locale),
     roles: roles.data,
   };
 }
@@ -311,8 +315,14 @@ export async function getUseTemplateDataForUser(
   userId: string,
   templateId: string,
   database: DbExecutor = getDb(),
+  locale: Locale = DEFAULT_LOCALE,
 ): Promise<UseTemplateData | null> {
-  const template = await getTemplateForBulkSend(userId, templateId, database);
+  const template = await getTemplateForBulkSend(
+    userId,
+    templateId,
+    database,
+    locale,
+  );
 
   if (!template) {
     return null;

@@ -3,17 +3,18 @@ import { NextResponse } from "next/server";
 import { requireVerifiedSenderSession } from "@/lib/auth/route-session";
 import { getDb } from "@/lib/db/connection";
 import { EnvelopeMutationError, sendDraftEnvelope } from "@/lib/envelopes";
+import { isLocale, LOCALE_HEADER } from "@/lib/i18n/types.ts";
 import { sendEnvelopeOptionsSchema } from "@/lib/schemas/envelope";
 import { logRouteError } from "@/lib/security/logging";
-import {
-  applyRateLimit,
-  buildRateLimitKey,
-} from "@/lib/security/route-controls";
 import {
   getClientIpAddress,
   getRequestPathname,
   getRequestUserAgent,
 } from "@/lib/security/request";
+import {
+  applyRateLimit,
+  buildRateLimitKey,
+} from "@/lib/security/route-controls";
 
 type EnvelopeSendRouteContext = {
   params: Promise<{
@@ -40,6 +41,8 @@ export async function POST(
 
   const session = sessionResult;
   const { id } = await context.params;
+  const requestedLocale = request.headers.get(LOCALE_HEADER);
+  const locale = isLocale(requestedLocale) ? requestedLocale : undefined;
   const ipAddress = getClientIpAddress(request.headers);
   const rateLimitResponse = await applyRateLimit({
     category: "draft_envelope_send",
@@ -91,6 +94,7 @@ export async function POST(
       id,
       {
         expiresInDays: options.data.expiresInDays,
+        locale,
         reminderIntervalDays: options.data.reminderIntervalDays,
         signatureLevel: options.data.signatureLevel,
         ipAddress,

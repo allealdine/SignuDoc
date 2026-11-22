@@ -1,16 +1,17 @@
-import { isResendTestSender } from "./services/email-addresses.ts";
 import {
   createEmailService,
-  resolveEmailAddresses,
   type EmailService,
+  resolveEmailAddresses,
 } from "./services/email.ts";
+import { isResendTestSender } from "./services/email-addresses.ts";
 import { withUserEmailLegalFooter } from "./services/email-legal-footer.ts";
 import { getBranding, getSettings, markEmailReady } from "./settings.ts";
-import { type EnvSource } from "./utils/env.ts";
+import type { EnvSource } from "./utils/env.ts";
 import { escapeHtml } from "./utils/html.ts";
 
 export type TestEmailResult =
-  { sent: true; to: string } | { sent: false; message: string };
+  | { sent: true; to: string }
+  | { sent: false; message: string };
 
 type SendTestEmailInput = {
   emailService?: EmailService;

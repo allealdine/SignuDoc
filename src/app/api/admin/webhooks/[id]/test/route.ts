@@ -4,9 +4,9 @@ import {
   applyRateLimit,
   buildRateLimitKey,
 } from "@/lib/security/route-controls";
+import { handleWebhookAdmin, noStore } from "@/lib/webhooks/admin-route";
 import { sendTestWebhook } from "@/lib/webhooks/deliver";
 import { getWebhookEndpoint } from "@/lib/webhooks/endpoints";
-import { handleWebhookAdmin, noStore } from "@/lib/webhooks/admin-route";
 
 type RouteContext = { params: Promise<{ id: string }> };
 

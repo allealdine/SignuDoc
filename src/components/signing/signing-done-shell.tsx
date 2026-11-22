@@ -1,7 +1,9 @@
+"use client";
+
 import { Brand } from "@/components/layout/brand";
 import { PublicLegalFooter } from "@/components/layout/public-legal-links";
-
-const fallbackEnvelopeTitle = "this document";
+import { formatMessage } from "@/lib/i18n/format.ts";
+import { useMessages } from "@/lib/i18n/messages-provider.tsx";
 
 type SigningDoneShellProps = {
   /** Shown inside another app's page, which carries on from here. */
@@ -13,10 +15,11 @@ export function SigningDoneShell({
   embedded = false,
   envelopeTitle,
 }: SigningDoneShellProps) {
+  const copy = useMessages().messages.done;
   const resolvedEnvelopeTitle =
     envelopeTitle && envelopeTitle.trim().length > 0
       ? envelopeTitle.trim()
-      : fallbackEnvelopeTitle;
+      : copy.fallbackTitle;
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -52,22 +55,17 @@ export function SigningDoneShell({
           </div>
 
           <h1 className="mt-7 text-[clamp(1.875rem,4.5vw,2.375rem)] font-extrabold tracking-[-0.035em] text-(--fg)">
-            You&apos;re all done.
+            {copy.title}
           </h1>
           <p className="mx-auto mt-4 max-w-[480px] text-base leading-7 text-(--secondary)">
-            Your signature has been recorded for{" "}
-            <span className="font-bold text-(--fg)">
-              &quot;{resolvedEnvelopeTitle}&quot;
-            </span>
-            .
+            {formatMessage(copy.recorded, { title: resolvedEnvelopeTitle })}
           </p>
           <p className="mx-auto mt-3 max-w-[480px] text-base leading-7 text-(--secondary)">
-            You&apos;ll receive an email with the signed document once all
-            parties have signed.
+            {copy.emailNotice}
           </p>
           {embedded ? null : (
             <p className="mt-8 inline-flex rounded-full bg-(--surface) px-4 py-2 text-sm font-semibold text-(--secondary)">
-              You can close this tab.
+              {copy.closeTab}
             </p>
           )}
         </section>

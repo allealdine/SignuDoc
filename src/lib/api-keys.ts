@@ -6,12 +6,12 @@ import {
 } from "node:crypto";
 
 import {
+  type DbExecutor,
+  type DbPool,
   getDb,
   queryMany,
   queryOne,
   withTransaction,
-  type DbExecutor,
-  type DbPool,
 } from "./db/connection.ts";
 import { recordSystemAuditEvent } from "./services/system-audit.ts";
 

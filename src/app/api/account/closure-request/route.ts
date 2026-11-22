@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-
-import { getAuthSessionFromHeaders } from "@/lib/auth/server";
 import { AccountMutationError, requestAccountClosure } from "@/lib/account";
+import { getAuthSessionFromHeaders } from "@/lib/auth/server";
 import { getDb } from "@/lib/db/connection";
 import { getRequestClient } from "@/lib/security/request";
 

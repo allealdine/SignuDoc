@@ -14,10 +14,10 @@ import { PDFDocument, StandardFonts } from "pdf-lib";
 import {
   buildCadesSignature,
   createSelfSignedSealIdentity,
-  saveSealedPdf,
   SEAL_TEST_OIDS,
-  sealIdentityFromPkcs12,
   type SealIdentity,
+  saveSealedPdf,
+  sealIdentityFromPkcs12,
 } from "./pdf-seal.ts";
 
 const run = promisify(execFile);

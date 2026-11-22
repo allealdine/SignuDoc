@@ -2,7 +2,7 @@ import { rm } from "node:fs/promises";
 
 import pg from "pg";
 
-import { e2eDataDir, e2eDatabaseUrl } from "../playwright.config";
+import { e2eDatabaseUrl, e2eDataDir } from "../playwright.config";
 
 function assertDisposableDatabase(connectionString: string) {
   const databaseName = new URL(connectionString).pathname.replace(/^\//, "");
