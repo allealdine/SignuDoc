@@ -24,12 +24,30 @@ const inter = Inter({
   variable: "--font-display",
 });
 
+const siteUrl = new URL("https://sign.nexa.or.id");
+const siteDescription =
+  "Free e-signature software for small businesses. Upload, send, sign — no enterprise circus required.";
+const shareImage = {
+  url: new URL("/img/og.png", siteUrl),
+  width: 1200,
+  height: 630,
+  alt: SIGNUDOC_NAME,
+};
+
 export const metadata: Metadata = {
+  metadataBase: siteUrl,
   title: SIGNUDOC_NAME,
-  description:
-    "Free e-signature software for small businesses. Upload, send, sign — no enterprise circus required.",
-  icons: {
-    icon: "/icon.svg",
+  description: siteDescription,
+  openGraph: {
+    type: "website",
+    siteName: SIGNUDOC_NAME,
+    title: SIGNUDOC_NAME,
+    description: siteDescription,
+    images: [shareImage],
+  },
+  twitter: {
+    card: "summary_large_image",
+    images: [shareImage],
   },
 };
 
