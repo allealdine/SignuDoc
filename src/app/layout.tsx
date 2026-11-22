@@ -6,6 +6,7 @@ import { SIGNUDOC_NAME } from "@/lib/branding.ts";
 import { getMessages } from "@/lib/i18n/messages.ts";
 import { MessagesProvider } from "@/lib/i18n/messages-provider.tsx";
 import { getRequestLocale } from "@/lib/i18n/request.ts";
+import { SITE_URL } from "@/lib/site-url.ts";
 
 import "./globals.css";
 
@@ -24,7 +25,7 @@ const inter = Inter({
   variable: "--font-display",
 });
 
-const siteUrl = new URL("https://sign.nexa.or.id");
+const siteUrl = new URL(SITE_URL);
 const siteDescription =
   "Free e-signature software for small businesses. Upload, send, sign — no enterprise circus required.";
 const shareImage = {
