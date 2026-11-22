@@ -1,6 +1,142 @@
 import { defineMessages } from "../define-messages.ts";
 
 export const enMessages = defineMessages({
+  auth: {
+    common: {
+      cancel: "Cancel",
+      continue: "Continue",
+      email: "Email",
+      emailPlaceholder: "jane@acmecorp.com",
+      logIn: "Log in",
+      loggingIn: "Logging in...",
+      or: "or",
+      password: "Password",
+      passwordHelper: "Must be at least 15 characters",
+      sending: "Sending...",
+      somethingWrong: "Something went wrong. Please try again.",
+    },
+    forgotPassword: {
+      action: "Send reset link",
+      description:
+        "Enter the email address associated with your account and we'll send you a reset link.",
+      errors: {
+        email: "Enter a valid email address",
+        failed: "We couldn't send the reset link. Please try again.",
+      },
+      success: "Check your email for a reset link.",
+      title: "Reset your password",
+    },
+    login: {
+      eyebrow: "Log in",
+      title: "Welcome back",
+      errors: {
+        email: "Enter a valid email address",
+        emailNotVerified:
+          "Verify your email before logging in. Check your inbox for a fresh link.",
+        invalidCredentials: "Invalid email or password. Please try again.",
+        password: "Enter your password",
+        passwordSignInOff:
+          "Password sign-in is turned off here. Continue with {provider} instead.",
+        passwordSignInOffGeneric: "Password sign-in is turned off here.",
+        signInLocked:
+          "Too many wrong passwords for this email address. Try again in 15 minutes, or reset your password.",
+      },
+      forgotPassword: "Forgot your password?",
+      noAccount: "Don't have an account?",
+      passwordInstead: "Sign in with a password instead",
+      resendFailed: "We couldn't resend the verification email.",
+      resendSuccess: "Verification email sent. Check your inbox.",
+      resendVerification: "Resend verification email",
+    },
+    password: {
+      breached: "Choose a password that hasn't appeared in a breach",
+      tooLong: "Password must be at most 128 characters",
+      tooShort: "Password must be at least 15 characters",
+    },
+    resetPassword: {
+      eyebrow: "Reset password",
+      title: "Create a new password",
+      label: "New password",
+      submit: "Update password",
+      submitting: "Updating password...",
+      success: "Your password has been reset. Log in with your new password.",
+      errors: {
+        invalidLink: "This reset link is invalid or has expired.",
+      },
+    },
+    secondStep: {
+      eyebrow: "Two-step sign-in",
+      titleBackup: "Enter a backup code",
+      titleCode: "Enter your code",
+      descriptionBackup: "Each backup code works once.",
+      descriptionCode:
+        "Open your authenticator app and enter the 6-digit code it shows.",
+      labelBackup: "Backup code",
+      labelCode: "6-digit code",
+      checking: "Checking...",
+      useApp: "Use a code from your app instead",
+      useBackup: "Lost your phone? Use a backup code",
+      errors: {
+        backupCode: "Enter one of your backup codes.",
+        backupInvalid: "That backup code is not right, or it was used before.",
+        code: "Enter the 6-digit code your authenticator app shows.",
+        codeInvalid:
+          "That code is not right. Check the time on your phone and try the newest code.",
+        locked:
+          "Too many wrong codes. Two-step sign-in is locked for 15 minutes.",
+        restart: "Too many wrong codes. Log in again to get a new try.",
+        timedOut: "That took too long. Log in again.",
+      },
+    },
+    signup: {
+      eyebrow: "Create account",
+      title: "Create your account",
+      fullName: "Full name",
+      fullNamePlaceholder: "Jane Smith",
+      passwordPlaceholder: "Enter a password",
+      creating: "Creating account...",
+      submit: "Sign up",
+      goToLogIn: "Go to log in",
+      haveAccount: "Already have an account?",
+      success: {
+        checkEmail: "Check your email to verify your sender account.",
+        emailNotConnected:
+          "Your account is created, but this site can't send email yet, so the email that verifies your address couldn't be sent. Ask an administrator to finish email setup in Settings, Organization. Once it's set up, log in and the verification email will be sent.",
+      },
+      rules: {
+        closed: "New accounts are not being accepted.",
+        domains: "Accounts can be created with an email address at {domains}.",
+        open: "Anyone can create an account.",
+        or: "or",
+        setup: "This site has not been set up yet.",
+      },
+      errors: {
+        email: "Enter a valid email address",
+        emailRegistered: "This email is already registered",
+        fullName: "Enter your full name",
+      },
+      closed: {
+        title: "Sign-up is closed",
+        description:
+          "New accounts are not being accepted on this site. If you were sent a document to sign, use the link in that email. You do not need an account.",
+      },
+    },
+    sso: {
+      continueWith: "Continue with {provider}",
+      errors: {
+        notAllowed:
+          "That address does not have an account here, and this site's sign-up rule does not let it make one. Ask an administrator.",
+        cancelled: "Sign-in was cancelled.",
+        emailNotFound:
+          "Your identity provider did not share an email address, so you could not be signed in. Ask your IT team to include the email claim.",
+        needsVerification:
+          "An account with this address already exists and its address is not confirmed yet. Sign in with your password once, or ask an administrator.",
+        linkedElsewhere:
+          "This sign-in is already tied to a different account here. Ask an administrator.",
+        generic: "Single sign-on did not finish. Please try again.",
+      },
+    },
+  },
   common: {
     and: "and",
     lastUpdated: "Last updated {date}",

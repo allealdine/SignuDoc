@@ -12,17 +12,15 @@ import { SsoButton, type SsoOption } from "@/components/auth/sso-button";
 import { FieldShell, ShellButton } from "@/components/shared/form-shell";
 import { authClient } from "@/lib/auth/client";
 import {
+  localizePasswordMessage,
+  localizeSignupMessage,
+} from "@/lib/i18n/auth-messages.ts";
+import { useMessages } from "@/lib/i18n/messages-provider.tsx";
+import {
   describePasswordRefusal,
   newPasswordLengthError,
-  PASSWORD_TOO_SHORT_MESSAGE,
 } from "@/lib/password-messages";
 import { signUpSchema } from "@/lib/schemas/auth";
-
-const defaultSuccessMessage = "Check your email to verify your sender account.";
-// With no email provider connected, the verification email cannot be sent.
-// Logging in sends it again, so that works once email is set up.
-const SIGNUP_EMAIL_NOT_CONNECTED_MESSAGE =
-  "Your account is created, but this site can't send email yet, so the email that verifies your address couldn't be sent. Ask an administrator to finish email setup in Settings, Organization. Once it's set up, log in and the verification email will be sent.";
 
 type AuthErrorLike = {
   code?: string;
@@ -119,13 +117,16 @@ function SignupFormCard({
   successMessage,
   values,
 }: SignupFormCardProps) {
+  const { messages } = useMessages();
+  const copy = messages.auth;
+
   return (
     <section className="panel w-full max-w-[460px] p-8 sm:p-10">
       <div className="space-y-7">
         <div className="space-y-2">
-          <p className="section-eyebrow">Create account</p>
+          <p className="section-eyebrow">{copy.signup.eyebrow}</p>
           <h1 className="text-[clamp(1.875rem,4.5vw,2.375rem)] font-extrabold leading-[1.08] tracking-[-0.035em] text-(--fg)">
-            Create your account
+            {copy.signup.title}
           </h1>
           {signupRule ? (
             <p className="pt-1 text-sm leading-6 text-muted-foreground">
@@ -142,7 +143,7 @@ function SignupFormCard({
 
         {showSuccess ? (
           <div aria-live="polite" className="notice notice-success">
-            <p>{successMessage ?? defaultSuccessMessage}</p>
+            <p>{successMessage ?? copy.signup.success.checkEmail}</p>
           </div>
         ) : null}
 
@@ -156,7 +157,7 @@ function SignupFormCard({
 
         {sso && passwordSignIn ? (
           <p className="text-center text-xs font-semibold uppercase tracking-[0.12em] text-(--secondary)">
-            or
+            {copy.common.or}
           </p>
         ) : null}
 
@@ -166,10 +167,10 @@ function SignupFormCard({
               autoComplete="name"
               disabled={formLocked}
               error={errors.fullName}
-              label="Full name"
+              label={copy.signup.fullName}
               name="signup-full-name"
               onChange={onFullNameChange}
-              placeholder="Jane Smith"
+              placeholder={copy.signup.fullNamePlaceholder}
               readOnly={formLocked}
               value={values.fullName}
             />
@@ -177,10 +178,10 @@ function SignupFormCard({
               autoComplete="email"
               disabled={formLocked}
               error={errors.email}
-              label="Email"
+              label={copy.common.email}
               name="signup-email"
               onChange={onEmailChange}
-              placeholder="jane@acmecorp.com"
+              placeholder={copy.common.emailPlaceholder}
               readOnly={formLocked}
               type="email"
               value={values.email}
@@ -189,11 +190,11 @@ function SignupFormCard({
               autoComplete="new-password"
               disabled={formLocked}
               error={errors.password}
-              helper="Must be at least 15 characters"
-              label="Password"
+              helper={copy.common.passwordHelper}
+              label={copy.common.password}
               name="signup-password"
               onChange={onPasswordChange}
-              placeholder="Enter a password"
+              placeholder={copy.signup.passwordPlaceholder}
               readOnly={formLocked}
               type="password"
               value={values.password}
@@ -202,7 +203,7 @@ function SignupFormCard({
             {showSuccess ? (
               <div className="flex flex-col gap-3">
                 <ShellButton className="w-full" href="/login" variant="primary">
-                  Go to log in
+                  {copy.signup.goToLogIn}
                 </ShellButton>
                 {onResendVerification ? (
                   <ShellButton
@@ -214,8 +215,8 @@ function SignupFormCard({
                     variant="secondary"
                   >
                     {isResendingVerification
-                      ? "Sending..."
-                      : "Resend verification email"}
+                      ? copy.common.sending
+                      : copy.login.resendVerification}
                   </ShellButton>
                 ) : null}
               </div>
@@ -227,19 +228,19 @@ function SignupFormCard({
                 type="submit"
                 variant="primary"
               >
-                {isSubmitting ? "Creating account..." : "Sign up"}
+                {isSubmitting ? copy.signup.creating : copy.signup.submit}
               </ShellButton>
             )}
           </form>
         ) : null}
 
         <div className="border-t border-(--border) pt-5 text-sm text-(--secondary)">
-          Already have an account?{" "}
+          {copy.signup.haveAccount}{" "}
           <Link
             className="font-bold text-(--accent-ink) underline-offset-4 hover:underline"
             href="/login"
           >
-            Log in
+            {copy.common.logIn}
           </Link>
         </div>
       </div>
@@ -269,22 +270,23 @@ export function SignupShell({
 }
 
 function SignupClosedCard() {
+  const { messages } = useMessages();
+  const copy = messages.auth.signup;
+
   return (
     <section className="panel w-full max-w-[460px] p-8 sm:p-10">
       <div className="space-y-7">
         <div className="space-y-2">
-          <p className="section-eyebrow">Create account</p>
+          <p className="section-eyebrow">{copy.eyebrow}</p>
           <h1 className="text-[clamp(1.875rem,4.5vw,2.375rem)] font-extrabold leading-[1.08] tracking-[-0.035em] text-(--fg)">
-            Sign-up is closed
+            {copy.closed.title}
           </h1>
           <p className="pt-1 text-sm leading-6 text-muted-foreground">
-            New accounts are not being accepted on this site. If you were sent a
-            document to sign, use the link in that email. You do not need an
-            account.
+            {copy.closed.description}
           </p>
         </div>
         <ShellButton className="w-full" href="/login" variant="primary">
-          Go to log in
+          {copy.goToLogIn}
         </ShellButton>
       </div>
     </section>
@@ -302,6 +304,8 @@ function LiveSignupShell({
   signupRule: string | null;
   sso: SsoOption | null;
 }) {
+  const { messages } = useMessages();
+  const copy = messages.auth;
   const [values, setValues] = useState<SignupFormValues>(
     createSignupFormValues(),
   );
@@ -353,13 +357,13 @@ function LiveSignupShell({
       });
 
       if (!response.ok) {
-        setBannerMessage("We couldn't resend the verification email.");
+        setBannerMessage(copy.login.resendFailed);
         return;
       }
 
-      setSuccessMessage("Verification email sent. Check your inbox.");
+      setSuccessMessage(copy.login.resendSuccess);
     } catch {
-      setBannerMessage("We couldn't resend the verification email.");
+      setBannerMessage(copy.login.resendFailed);
     } finally {
       setIsResendingVerification(false);
     }
@@ -387,17 +391,19 @@ function LiveSignupShell({
         const field = issue.path[0];
 
         if (field === "email") {
-          nextErrors.email = "Enter a valid email address";
+          nextErrors.email = copy.signup.errors.email;
         }
 
         if (field === "fullName") {
-          nextErrors.fullName = "Enter your full name";
+          nextErrors.fullName = copy.signup.errors.fullName;
         }
 
         if (field === "password") {
           nextErrors.password =
-            newPasswordLengthError(trimmedValues.password) ??
-            PASSWORD_TOO_SHORT_MESSAGE;
+            localizePasswordMessage(
+              newPasswordLengthError(trimmedValues.password),
+              copy,
+            ) ?? copy.password.tooShort;
         }
       }
 
@@ -428,21 +434,26 @@ function LiveSignupShell({
 
       if (SIGNUP_RULE_ERROR_CODES.has(result.error.code ?? "")) {
         setBannerMessage(
-          result.error.message ?? "New accounts are not being accepted.",
+          localizeSignupMessage(result.error.message, copy) ??
+            copy.signup.rules.closed,
         );
       } else if (
         normalizedErrorMessage.includes("user already exists") ||
         normalizedErrorMessage.includes("use another email")
       ) {
         setErrors({
-          email: "This email is already registered",
+          email: copy.signup.errors.emailRegistered,
         });
       } else if (describePasswordRefusal(result.error)) {
         setErrors({
-          password: describePasswordRefusal(result.error)!,
+          password:
+            localizePasswordMessage(
+              describePasswordRefusal(result.error),
+              copy,
+            ) ?? copy.common.somethingWrong,
         });
       } else {
-        setBannerMessage("Something went wrong. Please try again.");
+        setBannerMessage(copy.common.somethingWrong);
       }
 
       setIsSubmitting(false);
@@ -454,8 +465,8 @@ function LiveSignupShell({
     // the sender is not told to wait for it (issue #95).
     setSuccessMessage(
       emailConnected
-        ? defaultSuccessMessage
-        : SIGNUP_EMAIL_NOT_CONNECTED_MESSAGE,
+        ? copy.signup.success.checkEmail
+        : copy.signup.success.emailNotConnected,
     );
     setShowSuccess(true);
     setIsSubmitting(false);
@@ -478,7 +489,7 @@ function LiveSignupShell({
       onSubmit={handleSubmit}
       passwordSignIn={passwordSignIn}
       showSuccess={showSuccess}
-      signupRule={signupRule}
+      signupRule={localizeSignupMessage(signupRule, copy)}
       sso={sso}
       successMessage={successMessage}
       values={values}

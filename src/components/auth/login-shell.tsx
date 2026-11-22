@@ -18,15 +18,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { authClient } from "@/lib/auth/client";
+import { localizePasswordMessage } from "@/lib/i18n/auth-messages.ts";
+import { formatMessage } from "@/lib/i18n/format.ts";
+import { useMessages } from "@/lib/i18n/messages-provider.tsx";
 import {
   describePasswordRefusal,
   newPasswordLengthError,
   PASSWORD_TOO_LONG_MESSAGE,
 } from "@/lib/password-messages";
 import { forgotPasswordSchema, loginSchema } from "@/lib/schemas/auth";
-
-const verificationRequiredMessage =
-  "Verify your email before logging in. Check your inbox for a fresh link.";
 
 type AuthErrorLike = {
   code?: string;
@@ -129,15 +129,17 @@ function LiveLoginShell({
 }: LoginShellProps) {
   const router = useRouter();
   const { signupAvailable } = useBranding();
+  const { locale, messages } = useMessages();
+  const copy = messages.auth;
   const [values, setValues] = useState<LoginFormValues>(
     createLoginFormValues(),
   );
   const [errors, setErrors] = useState<LoginFormErrors>({});
   const [bannerMessage, setBannerMessage] = useState<string | null>(
     resetError === "INVALID_TOKEN"
-      ? "This reset link is invalid or has expired."
+      ? copy.resetPassword.errors.invalidLink
       : ssoError
-        ? describeSsoError(ssoError)
+        ? describeSsoError(ssoError, locale)
         : null,
   );
   // With password sign-in off, the form is only shown on request, for the
@@ -221,11 +223,11 @@ function LiveLoginShell({
         const field = issue.path[0];
 
         if (field === "email") {
-          nextErrors.email = "Enter a valid email address";
+          nextErrors.email = copy.login.errors.email;
         }
 
         if (field === "password") {
-          nextErrors.password = "Enter your password";
+          nextErrors.password = copy.login.errors.password;
         }
       }
 
@@ -251,28 +253,35 @@ function LiveLoginShell({
 
       const errorCode = (result.error as AuthErrorLike).code;
 
-      if (
-        errorCode === "SIGN_IN_LOCKED" ||
-        errorCode === "PASSWORD_SIGN_IN_OFF"
-      ) {
+      if (errorCode === "SIGN_IN_LOCKED") {
+        setBannerMessage(copy.login.errors.signInLocked);
+      } else if (errorCode === "PASSWORD_SIGN_IN_OFF") {
+        const provider =
+          result.error.message?.match(/Continue with (.+) instead\./)?.[1] ??
+          sso?.name;
         setBannerMessage(
-          result.error.message ??
-            "Too many wrong passwords. Try again in 15 minutes.",
+          provider
+            ? formatMessage(copy.login.errors.passwordSignInOff, { provider })
+            : copy.login.errors.passwordSignInOffGeneric,
         );
       } else if (normalizedErrorMessage.includes("email not verified")) {
-        setBannerMessage(verificationRequiredMessage);
+        setBannerMessage(copy.login.errors.emailNotVerified);
         setShowResendVerification(true);
       } else if (
         describePasswordRefusal(result.error) === PASSWORD_TOO_LONG_MESSAGE
       ) {
         // No account has a password this long, so it cannot be right. Say
         // why instead of "Something went wrong" (issue #57).
-        setErrors({ password: PASSWORD_TOO_LONG_MESSAGE });
+        setErrors({
+          password:
+            localizePasswordMessage(PASSWORD_TOO_LONG_MESSAGE, copy) ??
+            copy.password.tooLong,
+        });
       } else {
         setBannerMessage(
           normalizedErrorMessage.includes("invalid email or password")
-            ? "Invalid email or password. Please try again."
-            : "Something went wrong. Please try again.",
+            ? copy.login.errors.invalidCredentials
+            : copy.common.somethingWrong,
         );
       }
       setIsSubmitting(false);
@@ -312,7 +321,7 @@ function LiveLoginShell({
         ...currentForgotPassword,
         bannerMessage: null,
         errors: {
-          email: "Enter a valid email address",
+          email: copy.forgotPassword.errors.email,
         },
         successMessage: null,
         values: trimmedValues,
@@ -336,14 +345,10 @@ function LiveLoginShell({
 
     setForgotPassword((currentForgotPassword) => ({
       ...currentForgotPassword,
-      bannerMessage: result.error
-        ? "We couldn't send the reset link. Please try again."
-        : null,
+      bannerMessage: result.error ? copy.forgotPassword.errors.failed : null,
       errors: {},
       isSubmitting: false,
-      successMessage: result.error
-        ? null
-        : "Check your email for a reset link.",
+      successMessage: result.error ? null : copy.forgotPassword.success,
     }));
   }
 
@@ -369,13 +374,13 @@ function LiveLoginShell({
       });
 
       if (!response.ok) {
-        setBannerMessage("We couldn't resend the verification email.");
+        setBannerMessage(copy.login.resendFailed);
         return;
       }
 
-      setBannerMessage("Verification email sent. Check your inbox.");
+      setBannerMessage(copy.login.resendSuccess);
     } catch {
-      setBannerMessage("We couldn't resend the verification email.");
+      setBannerMessage(copy.login.resendFailed);
     } finally {
       setIsResendingVerification(false);
     }
@@ -406,9 +411,9 @@ function LiveLoginShell({
       <section className="panel w-full max-w-[460px] p-8 sm:p-10">
         <div className="space-y-7">
           <div className="space-y-2">
-            <p className="section-eyebrow">Log in</p>
+            <p className="section-eyebrow">{copy.login.eyebrow}</p>
             <h1 className="text-[clamp(1.875rem,4.5vw,2.375rem)] font-extrabold leading-[1.08] tracking-[-0.035em] text-(--fg)">
-              Welcome back
+              {copy.login.title}
             </h1>
           </div>
 
@@ -428,67 +433,65 @@ function LiveLoginShell({
 
           {sso && showPasswordForm ? (
             <p className="text-center text-xs font-semibold uppercase tracking-[0.12em] text-(--secondary)">
-              or
+              {copy.common.or}
             </p>
           ) : null}
 
           {showPasswordForm ? (
-            <>
-              <form className="space-y-5" noValidate onSubmit={handleSubmit}>
-                <FieldShell
-                  autoComplete="email"
-                  disabled={formLocked}
-                  error={errors.email}
-                  label="Email"
-                  name="login-email"
-                  onChange={handleChange("email")}
-                  placeholder="jane@acmecorp.com"
-                  readOnly={formLocked}
-                  type="email"
-                  value={values.email}
-                />
-                <FieldShell
-                  autoComplete="current-password"
-                  disabled={formLocked}
-                  error={errors.password}
-                  label="Password"
-                  name="login-password"
-                  onChange={handleChange("password")}
-                  readOnly={formLocked}
-                  type="password"
-                  value={values.password}
-                />
+            <form className="space-y-5" noValidate onSubmit={handleSubmit}>
+              <FieldShell
+                autoComplete="email"
+                disabled={formLocked}
+                error={errors.email}
+                label={copy.common.email}
+                name="login-email"
+                onChange={handleChange("email")}
+                placeholder={copy.common.emailPlaceholder}
+                readOnly={formLocked}
+                type="email"
+                value={values.email}
+              />
+              <FieldShell
+                autoComplete="current-password"
+                disabled={formLocked}
+                error={errors.password}
+                label={copy.common.password}
+                name="login-password"
+                onChange={handleChange("password")}
+                readOnly={formLocked}
+                type="password"
+                value={values.password}
+              />
+              <ShellButton
+                className="w-full"
+                disabled={formLocked}
+                loading={isSubmitting}
+                type="submit"
+              >
+                {isSubmitting ? copy.common.loggingIn : copy.common.logIn}
+              </ShellButton>
+              {showResendVerification ? (
                 <ShellButton
                   className="w-full"
                   disabled={formLocked}
-                  loading={isSubmitting}
-                  type="submit"
+                  loading={isResendingVerification}
+                  onClick={handleResendVerification}
+                  type="button"
+                  variant="secondary"
                 >
-                  {isSubmitting ? "Logging in..." : "Log in"}
+                  {isResendingVerification
+                    ? copy.common.sending
+                    : copy.login.resendVerification}
                 </ShellButton>
-                {showResendVerification ? (
-                  <ShellButton
-                    className="w-full"
-                    disabled={formLocked}
-                    loading={isResendingVerification}
-                    onClick={handleResendVerification}
-                    type="button"
-                    variant="secondary"
-                  >
-                    {isResendingVerification
-                      ? "Sending..."
-                      : "Resend verification email"}
-                  </ShellButton>
-                ) : null}
-              </form>
-            </>
+              ) : null}
+            </form>
           ) : passwordSignIn === "fallback" ? (
             <button
               className="w-fit p-0 text-left text-sm font-bold text-(--accent-ink) underline-offset-4 hover:underline"
               onClick={() => setShowPasswordForm(true)}
               type="button"
             >
-              Sign in with a password instead
+              {copy.login.passwordInstead}
             </button>
           ) : null}
 
@@ -499,17 +502,17 @@ function LiveLoginShell({
                 onClick={openForgotPasswordModal}
                 type="button"
               >
-                Forgot your password?
+                {copy.login.forgotPassword}
               </button>
             ) : null}
             {signupAvailable ? (
               <p>
-                Don&apos;t have an account?{" "}
+                {copy.login.noAccount}{" "}
                 <Link
                   className="font-bold text-(--accent-ink) underline-offset-4 hover:underline"
                   href="/signup"
                 >
-                  Sign up
+                  {copy.signup.submit}
                 </Link>
               </p>
             ) : null}
@@ -555,6 +558,9 @@ function ForgotPasswordDialog({
   onSubmit,
   successMessage,
 }: ForgotPasswordDialogProps) {
+  const { messages } = useMessages();
+  const copy = messages.auth;
+
   return (
     <Dialog
       open={isOpen}
@@ -567,10 +573,9 @@ function ForgotPasswordDialog({
       <DialogContent className="max-w-[560px] sm:p-8" showCloseButton={false}>
         <div className="space-y-6">
           <DialogHeader className="space-y-3">
-            <DialogTitle>Reset your password</DialogTitle>
+            <DialogTitle>{copy.forgotPassword.title}</DialogTitle>
             <DialogDescription className="max-w-[40ch]">
-              Enter the email address associated with your account and
-              we&apos;ll send you a reset link.
+              {copy.forgotPassword.description}
             </DialogDescription>
           </DialogHeader>
 
@@ -591,10 +596,10 @@ function ForgotPasswordDialog({
               autoComplete="email"
               disabled={isSubmitting}
               error={emailError}
-              label="Email"
+              label={copy.common.email}
               name="forgot-password-email"
               onChange={onEmailChange}
-              placeholder="jane@acmecorp.com"
+              placeholder={copy.common.emailPlaceholder}
               readOnly={isSubmitting}
               type="email"
               value={email}
@@ -607,14 +612,16 @@ function ForgotPasswordDialog({
                 type="button"
                 variant="secondary"
               >
-                Cancel
+                {copy.common.cancel}
               </ShellButton>
               <ShellButton
                 disabled={isSubmitting}
                 loading={isSubmitting}
                 type="submit"
               >
-                {isSubmitting ? "Sending..." : "Send reset link"}
+                {isSubmitting
+                  ? copy.common.sending
+                  : copy.forgotPassword.action}
               </ShellButton>
             </div>
           </form>
@@ -625,6 +632,8 @@ function ForgotPasswordDialog({
 }
 
 function ResetPasswordCard({ resetToken }: { resetToken: string }) {
+  const { messages } = useMessages();
+  const copy = messages.auth;
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -645,7 +654,7 @@ function ResetPasswordCard({ resetToken }: { resetToken: string }) {
     const lengthError = newPasswordLengthError(trimmedPassword);
 
     if (lengthError) {
-      setError(lengthError);
+      setError(localizePasswordMessage(lengthError, copy));
       setSuccessMessage(null);
       return;
     }
@@ -665,17 +674,17 @@ function ResetPasswordCard({ resetToken }: { resetToken: string }) {
 
       setError(
         normalizedErrorMessage.includes("invalid token")
-          ? "This reset link is invalid or has expired."
-          : (describePasswordRefusal(result.error) ??
-              "Something went wrong. Please try again."),
+          ? copy.resetPassword.errors.invalidLink
+          : (localizePasswordMessage(
+              describePasswordRefusal(result.error),
+              copy,
+            ) ?? copy.common.somethingWrong),
       );
       setIsSubmitting(false);
       return;
     }
 
-    setSuccessMessage(
-      "Your password has been reset. Log in with your new password.",
-    );
+    setSuccessMessage(copy.resetPassword.success);
     setIsSubmitting(false);
   }
 
@@ -685,9 +694,9 @@ function ResetPasswordCard({ resetToken }: { resetToken: string }) {
     <section className="panel w-full max-w-[440px] p-8 sm:p-10">
       <div className="space-y-8">
         <div className="space-y-2">
-          <p className="section-eyebrow">Reset password</p>
+          <p className="section-eyebrow">{copy.resetPassword.eyebrow}</p>
           <h1 className="text-[clamp(1.875rem,4.5vw,2.375rem)] font-extrabold leading-[1.08] tracking-[-0.035em] text-(--fg)">
-            Create a new password
+            {copy.resetPassword.title}
           </h1>
         </div>
 
@@ -708,8 +717,8 @@ function ResetPasswordCard({ resetToken }: { resetToken: string }) {
             autoComplete="new-password"
             disabled={formLocked}
             error={error ?? undefined}
-            helper="Must be at least 15 characters"
-            label="New password"
+            helper={copy.common.passwordHelper}
+            label={copy.resetPassword.label}
             name="reset-password"
             onChange={(event) => {
               setPassword(event.target.value);
@@ -726,7 +735,9 @@ function ResetPasswordCard({ resetToken }: { resetToken: string }) {
             loading={isSubmitting}
             type="submit"
           >
-            {isSubmitting ? "Updating password..." : "Update password"}
+            {isSubmitting
+              ? copy.resetPassword.submitting
+              : copy.resetPassword.submit}
           </ShellButton>
         </form>
       </div>
@@ -741,6 +752,8 @@ type SecondStepCardProps = {
 };
 
 function SecondStepCard({ onRestart, onSignedIn }: SecondStepCardProps) {
+  const { messages } = useMessages();
+  const copy = messages.auth.secondStep;
   const [code, setCode] = useState("");
   const [useBackupCode, setUseBackupCode] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -756,12 +769,12 @@ function SecondStepCard({ onRestart, onSignedIn }: SecondStepCardProps) {
     const trimmed = code.replace(/\s+/g, "");
 
     if (!useBackupCode && !/^\d{6}$/.test(trimmed)) {
-      setError("Enter the 6-digit code your authenticator app shows.");
+      setError(copy.errors.code);
       return;
     }
 
     if (useBackupCode && trimmed.length === 0) {
-      setError("Enter one of your backup codes.");
+      setError(copy.errors.backupCode);
       return;
     }
 
@@ -792,29 +805,25 @@ function SecondStepCard({ onRestart, onSignedIn }: SecondStepCardProps) {
 
       switch (payload?.code) {
         case "INVALID_CODE":
-          setError(
-            "That code is not right. Check the time on your phone and try the newest code.",
-          );
+          setError(copy.errors.codeInvalid);
           break;
         case "INVALID_BACKUP_CODE":
-          setError("That backup code is not right, or it was used before.");
+          setError(copy.errors.backupInvalid);
           break;
         case "ACCOUNT_TEMPORARILY_LOCKED":
-          setError(
-            "Too many wrong codes. Two-step sign-in is locked for 15 minutes.",
-          );
+          setError(copy.errors.locked);
           break;
         case "TOO_MANY_ATTEMPTS_REQUEST_NEW_CODE":
-          onRestart("Too many wrong codes. Log in again to get a new try.");
+          onRestart(copy.errors.restart);
           return;
         case "INVALID_TWO_FACTOR_COOKIE":
-          onRestart("That took too long. Log in again.");
+          onRestart(copy.errors.timedOut);
           return;
         default:
-          setError("Something went wrong. Please try again.");
+          setError(messages.auth.common.somethingWrong);
       }
     } catch {
-      setError("Something went wrong. Please try again.");
+      setError(messages.auth.common.somethingWrong);
     } finally {
       setIsSubmitting(false);
     }
@@ -824,14 +833,12 @@ function SecondStepCard({ onRestart, onSignedIn }: SecondStepCardProps) {
     <section className="panel w-full max-w-[460px] p-8 sm:p-10">
       <div className="space-y-7">
         <div className="space-y-2">
-          <p className="section-eyebrow">Two-step sign-in</p>
+          <p className="section-eyebrow">{copy.eyebrow}</p>
           <h1 className="text-[clamp(1.875rem,4.5vw,2.375rem)] font-extrabold leading-[1.08] tracking-[-0.035em] text-(--fg)">
-            {useBackupCode ? "Enter a backup code" : "Enter your code"}
+            {useBackupCode ? copy.titleBackup : copy.titleCode}
           </h1>
           <p className="text-sm leading-6 text-(--secondary)">
-            {useBackupCode
-              ? "Each backup code works once."
-              : "Open your authenticator app and enter the 6-digit code it shows."}
+            {useBackupCode ? copy.descriptionBackup : copy.descriptionCode}
           </p>
         </div>
 
@@ -845,7 +852,7 @@ function SecondStepCard({ onRestart, onSignedIn }: SecondStepCardProps) {
           <FieldShell
             autoComplete="one-time-code"
             disabled={isSubmitting}
-            label={useBackupCode ? "Backup code" : "6-digit code"}
+            label={useBackupCode ? copy.labelBackup : copy.labelCode}
             name="second-step-code"
             onChange={(event) => {
               setCode(event.target.value);
@@ -860,7 +867,7 @@ function SecondStepCard({ onRestart, onSignedIn }: SecondStepCardProps) {
             loading={isSubmitting}
             type="submit"
           >
-            {isSubmitting ? "Checking..." : "Continue"}
+            {isSubmitting ? copy.checking : messages.auth.common.continue}
           </ShellButton>
         </form>
 
@@ -874,9 +881,7 @@ function SecondStepCard({ onRestart, onSignedIn }: SecondStepCardProps) {
             }}
             type="button"
           >
-            {useBackupCode
-              ? "Use a code from your app instead"
-              : "Lost your phone? Use a backup code"}
+            {useBackupCode ? copy.useApp : copy.useBackup}
           </button>
         </div>
       </div>

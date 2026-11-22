@@ -2,6 +2,14 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { formatDeadline } from "../envelope-deadline.ts";
+import {
+  PASSWORD_TOO_LONG_MESSAGE,
+  PASSWORD_TOO_SHORT_MESSAGE,
+} from "../password-messages.ts";
+import {
+  localizePasswordMessage,
+  localizeSignupMessage,
+} from "./auth-messages.ts";
 import { formatMessage } from "./format.ts";
 import { enMessages } from "./locales/en.ts";
 import { idMessages } from "./locales/id.ts";
@@ -126,6 +134,52 @@ test("the contact form and its errors are available in both languages", () => {
   assert.match(id.success, /\{email\}/);
   assert.match(en.errors.reviewFields, /highlighted fields/);
   assert.match(id.errors.reviewFields, /kolom yang ditandai/);
+});
+
+test("the auth screens have translated copy in both languages", () => {
+  const en = enMessages.auth;
+  const id = idMessages.auth;
+
+  assert.equal(en.login.title, "Welcome back");
+  assert.equal(id.login.title, "Selamat datang kembali");
+  assert.equal(en.signup.submit, "Sign up");
+  assert.equal(id.signup.submit, "Daftar");
+  assert.equal(en.secondStep.eyebrow, "Two-step sign-in");
+  assert.equal(id.secondStep.eyebrow, "Masuk dua langkah");
+
+  for (const copy of [en, id]) {
+    assert.match(copy.sso.continueWith, /\{provider\}/);
+    assert.match(copy.signup.rules.domains, /\{domains\}/);
+  }
+});
+
+test("canonical auth messages are localized only at the screen", () => {
+  assert.equal(
+    localizePasswordMessage(PASSWORD_TOO_SHORT_MESSAGE, idMessages.auth),
+    idMessages.auth.password.tooShort,
+  );
+  assert.equal(
+    localizePasswordMessage(PASSWORD_TOO_LONG_MESSAGE, idMessages.auth),
+    idMessages.auth.password.tooLong,
+  );
+  assert.equal(
+    localizePasswordMessage("Unrelated failure", idMessages.auth),
+    "Unrelated failure",
+  );
+  assert.equal(
+    localizeSignupMessage(
+      "Accounts can be created with an email address at @a.com or @b.com.",
+      idMessages.auth,
+    ),
+    "Akun dapat dibuat dengan alamat email di @a.com atau @b.com.",
+  );
+  assert.equal(
+    localizeSignupMessage(
+      "This site has not been set up yet.",
+      idMessages.auth,
+    ),
+    idMessages.auth.signup.rules.setup,
+  );
 });
 
 test("the dashboard has translated copy in both languages", () => {

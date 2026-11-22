@@ -2,6 +2,147 @@ import { defineMessages } from "../define-messages.ts";
 import type { Messages } from "./en.ts";
 
 export const idMessages: Messages = defineMessages({
+  auth: {
+    common: {
+      cancel: "Batal",
+      continue: "Lanjutkan",
+      email: "Email",
+      emailPlaceholder: "nama@perusahaan.com",
+      logIn: "Masuk",
+      loggingIn: "Memproses masuk...",
+      or: "atau",
+      password: "Kata sandi",
+      passwordHelper: "Minimal 15 karakter",
+      sending: "Mengirim...",
+      somethingWrong: "Terjadi kesalahan. Silakan coba lagi.",
+    },
+    forgotPassword: {
+      action: "Kirim tautan pengaturan ulang",
+      description:
+        "Masukkan alamat email yang terhubung dengan akun Anda, lalu kami akan mengirimkan tautan pengaturan ulang.",
+      errors: {
+        email: "Masukkan alamat email yang valid",
+        failed:
+          "Tautan pengaturan ulang tidak dapat dikirim. Silakan coba lagi.",
+      },
+      success: "Periksa email Anda untuk tautan pengaturan ulang.",
+      title: "Atur ulang kata sandi Anda",
+    },
+    login: {
+      eyebrow: "Masuk",
+      title: "Selamat datang kembali",
+      errors: {
+        email: "Masukkan alamat email yang valid",
+        emailNotVerified:
+          "Verifikasi alamat email Anda sebelum masuk. Periksa kotak masuk untuk tautan baru.",
+        invalidCredentials: "Email atau kata sandi salah. Silakan coba lagi.",
+        password: "Masukkan kata sandi Anda",
+        passwordSignInOff:
+          "Masuk dengan kata sandi dinonaktifkan di sini. Lanjutkan dengan {provider}.",
+        passwordSignInOffGeneric:
+          "Masuk dengan kata sandi dinonaktifkan di sini.",
+        signInLocked:
+          "Terlalu banyak kata sandi salah untuk alamat email ini. Coba lagi dalam 15 menit, atau atur ulang kata sandi.",
+      },
+      forgotPassword: "Lupa kata sandi?",
+      noAccount: "Belum punya akun?",
+      passwordInstead: "Masuk dengan kata sandi saja",
+      resendFailed: "Email verifikasi tidak dapat dikirim ulang.",
+      resendSuccess:
+        "Email verifikasi telah dikirim. Periksa kotak masuk Anda.",
+      resendVerification: "Kirim ulang email verifikasi",
+    },
+    password: {
+      breached: "Pilih kata sandi yang pernah muncul dalam kebocoran data",
+      tooLong: "Kata sandi maksimal 128 karakter",
+      tooShort: "Kata sandi harus terdiri dari minimal 15 karakter",
+    },
+    resetPassword: {
+      eyebrow: "Atur ulang kata sandi",
+      title: "Buat kata sandi baru",
+      label: "Kata sandi baru",
+      submit: "Perbarui kata sandi",
+      submitting: "Memperbarui kata sandi...",
+      success:
+        "Kata sandi Anda telah diatur ulang. Masuklah dengan kata sandi baru Anda.",
+      errors: {
+        invalidLink:
+          "Tautan pengaturan ulang ini tidak valid atau telah kedaluwarsa.",
+      },
+    },
+    secondStep: {
+      eyebrow: "Masuk dua langkah",
+      titleBackup: "Masukkan kode cadangan",
+      titleCode: "Masukkan kode Anda",
+      descriptionBackup: "Setiap kode cadangan hanya dapat digunakan sekali.",
+      descriptionCode:
+        "Buka aplikasi autentikator dan masukkan kode 6 digit yang ditampilkan.",
+      labelBackup: "Kode cadangan",
+      labelCode: "Kode 6 digit",
+      checking: "Memeriksa...",
+      useApp: "Gunakan kode dari aplikasi Anda",
+      useBackup: "Kehilangan ponsel? Gunakan kode cadangan",
+      errors: {
+        backupCode: "Masukkan salah satu kode cadangan Anda.",
+        backupInvalid: "Kode cadangan itu salah, atau sudah pernah digunakan.",
+        code: "Masukkan kode 6 digit yang ditampilkan aplikasi autentikator Anda.",
+        codeInvalid:
+          "Kode itu salah. Periksa waktu di ponsel Anda lalu coba kode terbaru.",
+        locked:
+          "Terlalu banyak kode salah. Masuk dua langkah dikunci selama 15 menit.",
+        restart: "Terlalu banyak kode salah. Masuk kembali untuk mencoba lagi.",
+        timedOut: "Proses ini terlalu lama. Silakan masuk kembali.",
+      },
+    },
+    signup: {
+      eyebrow: "Buat akun",
+      title: "Buat akun Anda",
+      fullName: "Nama lengkap",
+      fullNamePlaceholder: "Nama Lengkap",
+      passwordPlaceholder: "Masukkan kata sandi",
+      creating: "Membuat akun...",
+      submit: "Daftar",
+      goToLogIn: "Pergi ke halaman masuk",
+      haveAccount: "Sudah punya akun?",
+      success: {
+        checkEmail: "Periksa email Anda untuk memverifikasi akun pengirim.",
+        emailNotConnected:
+          "Akun Anda telah dibuat, tetapi situs ini belum dapat mengirim email, sehingga email verifikasi alamat Anda tidak dapat dikirim. Mintalah administrator menyelesaikan penyiapan email di Pengaturan, Organisasi. Setelah itu, masuklah dan email verifikasi akan dikirim.",
+      },
+      rules: {
+        closed: "Akun baru sedang tidak diterima.",
+        domains: "Akun dapat dibuat dengan alamat email di {domains}.",
+        open: "Siapa pun dapat membuat akun.",
+        or: "atau",
+        setup: "Situs ini belum disiapkan.",
+      },
+      errors: {
+        email: "Masukkan alamat email yang valid",
+        emailRegistered: "Email ini sudah terdaftar",
+        fullName: "Masukkan nama lengkap Anda",
+      },
+      closed: {
+        title: "Pendaftaran ditutup",
+        description:
+          "Akun baru sedang tidak diterima di situs ini. Jika Anda dikirimi dokumen untuk ditandatangani, gunakan tautan dalam email tersebut. Anda tidak memerlukan akun.",
+      },
+    },
+    sso: {
+      continueWith: "Lanjutkan dengan {provider}",
+      errors: {
+        notAllowed:
+          "Alamat ini tidak memiliki akun di sini, dan aturan pendaftaran situs ini tidak mengizinkan pembuatan akun. Hubungi administrator.",
+        cancelled: "Proses masuk dibatalkan.",
+        emailNotFound:
+          "Penyedia identitas Anda tidak membagikan alamat email, sehingga Anda tidak dapat masuk. Mintalah tim TI untuk menyertakan klaim email.",
+        needsVerification:
+          "Akun dengan alamat ini sudah ada dan alamatnya belum dikonfirmasi. Masuklah dengan kata sandi sekali, atau hubungi administrator.",
+        linkedElsewhere:
+          "Proses masuk ini sudah terhubung dengan akun lain di sini. Hubungi administrator.",
+        generic: "Masuk tunggal tidak selesai. Silakan coba lagi.",
+      },
+    },
+  },
   common: {
     and: "dan",
     lastUpdated: "Terakhir diperbarui {date}",
