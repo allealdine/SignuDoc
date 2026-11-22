@@ -730,12 +730,12 @@ test("a new install is set up, a sender sends a PDF and a recipient signs it", a
 
     expect(thumbnailHeaders["content-type"]).toBe("image/jpeg");
     expect(thumbnailHeaders["cache-control"]).toBe("private, no-cache");
-    expect(thumbnailHeaders["etag"]).toBeTruthy();
+    expect(thumbnailHeaders.etag).toBeTruthy();
 
     // Asking again with the picture's name is answered "still good", with
     // no picture in the answer.
     const revalidation = await page.request.get(thumbnailPath, {
-      headers: { "if-none-match": thumbnailHeaders["etag"] },
+      headers: { "if-none-match": thumbnailHeaders.etag },
     });
 
     expect(revalidation.status()).toBe(304);
@@ -751,7 +751,7 @@ test("a new install is set up, a sender sends a PDF and a recipient signs it", a
     expect(
       (
         await anonymousContext.request.get(thumbnailPath, {
-          headers: { "if-none-match": thumbnailHeaders["etag"] },
+          headers: { "if-none-match": thumbnailHeaders.etag },
         })
       ).status(),
     ).toBe(401);

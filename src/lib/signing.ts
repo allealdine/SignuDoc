@@ -329,6 +329,7 @@ function getSigningUnavailableMessage(
     case "voided":
       return "This envelope has been voided.";
     case "expired":
+      return "This envelope has been expired.";
     default:
       return "This link has expired.";
   }

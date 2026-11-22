@@ -97,7 +97,7 @@ function relativeLuminance(color: Rgb): number {
 
     return value <= 0.039_28
       ? value / 12.92
-      : Math.pow((value + 0.055) / 1.055, 2.4);
+      : ((value + 0.055) / 1.055) ** 2.4;
   });
 
   return 0.2126 * red + 0.7152 * green + 0.0722 * blue;

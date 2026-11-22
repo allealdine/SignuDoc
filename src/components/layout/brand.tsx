@@ -75,8 +75,8 @@ export function BrandLogo({
     <img
       alt=""
       className={cn(
-        "block h-8 w-auto object-contain object-left",
-        compact ? "max-w-10" : "max-w-[44vw] sm:max-w-44",
+        "block h-11 w-auto object-contain object-left",
+        compact ? "max-w-10" : "max-w-[55vw] sm:max-w-55",
         className,
       )}
       decoding="async"
