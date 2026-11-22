@@ -2540,10 +2540,10 @@ export const idMessages: Messages = defineMessages({
         },
         cookies: {
           closing:
-            "Pemrosesan opsional Vercel BotID hanya berlaku jika fitur tersebut diaktifkan. Anda dapat menghapus cookie dan cache lokal di browser, meskipun Anda mungkin perlu masuk kembali.",
+            "Cookie analitik bersifat opsional dan dapat diblokir atau dihapus di browser tanpa memengaruhi akses ke layanan; memblokirnya hanya menghilangkan statistik penggunaan. Pemrosesan opsional Vercel BotID hanya berlaku jika fitur tersebut diaktifkan. Anda dapat menghapus cookie lainnya dan cache lokal di browser, meskipun Anda mungkin perlu masuk kembali.",
           heading: "8. Cookie, verifikasi, dan penyimpanan lokal",
           intro:
-            "Kami menggunakan cookie dan penyimpanan browser hanya untuk menjalankan dan mengamankan layanan:",
+            "Kami menggunakan cookie dan penyimpanan browser untuk menjalankan dan mengamankan layanan, serta analitik opsional untuk memahami halaman publik mana yang bermanfaat:",
           items: [
             "better-auth.session_token — menjaga Anda tetap masuk selama 7 hari.",
             "better-auth.session_data dan better-auth.account_data — cache autentikasi berumur pendek, berlaku 5 menit.",
@@ -2551,6 +2551,7 @@ export const idMessages: Messages = defineMessages({
             "sd_v_<prefiks hash token> — memverifikasi penandatangan setelah kode akses, pemeriksaan akun, atau kode surel, berlaku 8 jam.",
             "NEXT_LOCALE — mengingat pilihan bahasa Anda selama 365 hari. Cookie ini hanya dipakai untuk memilih bahasa dan dapat dibaca skrip.",
             "IndexedDB signudoc-draft-preview-cache — menyimpan pratinjau PDF draf di browser maksimal 24 jam.",
+            "Google Tag Manager / Google Analytics — analitik opsional hanya pada halaman publik. Alat ini mencatat tampilan halaman dan interaksi agregat, serta tidak menerima isi dokumen, nama penandatangan, alamat surel, maupun token amplop. Cookie-nya dapat diblokir atau dihapus di browser; lihat alat opt-out di tools.google.com/dlpage/gaoptout.",
           ],
         },
         dataCategories: {
@@ -2627,11 +2628,17 @@ export const idMessages: Messages = defineMessages({
               purpose:
                 "Menangani pengaduan, sengketa, serta permintaan dari regulator atau pengadilan.",
             },
+            {
+              basis:
+                "Dasar: kepentingan sah untuk memahami penggunaan situs publik; cookie analitik bersifat opsional.",
+              purpose:
+                "Mengukur kunjungan dan interaksi pada halaman publik, tanpa menerima isi dokumen maupun data penandatangan.",
+            },
           ],
         },
         recipients: {
           closing:
-            "Kami tidak menjual data pribadi, tidak menjalankan bisnis iklan, dan tidak mengonfigurasi SMS atau analitik pihak ketiga di layanan hosted. Jika penyedia memproses data atas nama kami, kami menggunakan pengaturan kontrak sebagaimana diperlukan UU PDP.",
+            "Kami tidak menjual data pribadi, tidak menjalankan bisnis iklan, dan tidak mengonfigurasi SMS. Google memproses data penggunaan terbatas yang tidak memuat isi dokumen untuk analitik opsional sebagaimana dijelaskan di atas. Jika penyedia memproses data atas nama kami, kami menggunakan pengaturan kontrak sebagaimana diperlukan UU PDP.",
           heading: "5. Penerima dan penyedia layanan",
           intro:
             "Kami membagikan data pribadi hanya kepada penyedia yang memerlukannya untuk menjalankan Sakta, kepada pihak dalam amplop, atau ketika hukum mewajibkannya. Penerima utamanya adalah:",
@@ -2646,6 +2653,7 @@ export const idMessages: Messages = defineMessages({
             "Penyedia OIDC/SSO yang Anda konfigurasi — menerima alihan autentikasi serta cakupan openid, email, dan profile ketika Anda masuk dengan cara tersebut.",
             "Endpoint webhook yang dikonfigurasi organisasi Anda — menerima payload peristiwa amplop dan penandatangan yang dipilih administrator.",
             "Penyedia log drain/SIEM opsional — menerima log keamanan dan audit jika diaktifkan.",
+            "Google (Google Tag Manager dan Google Analytics) — pengukuran penggunaan opsional pada halaman publik; tidak ada data dokumen, penandatangan, atau amplop yang dikirim.",
           ],
         },
         requests: {

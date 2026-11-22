@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
+import { ANALYTICS_PATH_HEADER } from "@/lib/analytics.ts";
 import { frameAncestorsFor } from "@/lib/embed-origin";
 import {
   DEFAULT_LOCALE,
@@ -55,6 +56,13 @@ function isVercelPreview() {
 // https://vercel.com/docs/vercel-blob/vercel-signed-urls#presigned-uploads
 const DEFAULT_BLOB_API_URL = "https://vercel.com/api/blob";
 
+// GTM loads its container from googletagmanager.com; GA4 sends measurements to
+// google-analytics.com and its regional endpoint. No other Google origin is
+// needed, and the noscript iframe stays blocked by frame-src 'none'.
+const GTM_SCRIPT_SOURCE = "https://www.googletagmanager.com";
+const ANALYTICS_REQUEST_SOURCES =
+  "https://www.google-analytics.com https://region1.google-analytics.com";
+
 function resolveBlobUploadSource() {
   try {
     if (!supportsDirectUploads()) {
@@ -86,6 +94,7 @@ function buildContentSecurityPolicy(frameAncestors: string) {
         "'self'",
         "data:",
         "blob:",
+        ANALYTICS_REQUEST_SOURCES,
         preview && "https://vercel.live https://vercel.com",
       ],
     ],
@@ -104,6 +113,7 @@ function buildContentSecurityPolicy(frameAncestors: string) {
         // The field editor reads the just-uploaded PDF back from a blob: URL.
         "blob:",
         resolveBlobUploadSource(),
+        ANALYTICS_REQUEST_SOURCES,
         preview && "https://vercel.live wss://ws-us3.pusher.com",
       ],
     ],
@@ -128,6 +138,7 @@ function buildContentSecurityPolicy(frameAncestors: string) {
       [
         "'self'",
         "'unsafe-inline'",
+        GTM_SCRIPT_SOURCE,
         !isProductionEnvironment() && "'unsafe-eval'",
         preview && "https://vercel.live",
       ],
@@ -202,9 +213,11 @@ export function proxy(request: NextRequest) {
   const locale = resolveLocale(request);
   const requestHeaders = new Headers(request.headers);
 
-  // Forwarded upstream only: Client Components cannot read this header, and
-  // no request detail is sent back to the browser with it.
+  // Forwarded upstream only: Client Components cannot read these headers, and
+  // no request detail is sent back to the browser with them. The pathname lets
+  // the root layout keep analytics away from private routes during SSR.
   requestHeaders.set(LOCALE_HEADER, locale);
+  requestHeaders.set(ANALYTICS_PATH_HEADER, pathname);
 
   const response = NextResponse.next({ request: { headers: requestHeaders } });
 

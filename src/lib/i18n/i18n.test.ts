@@ -110,6 +110,15 @@ test("the privacy notice uses Indonesian law and names its processors", () => {
   assert.match(id.requests.paragraphs.join(" "), /30 hari/);
   assert.match(en.children.paragraphs.join(" "), /18 years/);
   assert.match(id.children.paragraphs.join(" "), /18 \(delapan belas\) tahun/);
+  assert.match(en.cookies.intro, /optional analytics/);
+  assert.match(id.cookies.intro, /analitik opsional/);
+  assert.match(en.recipients.items.join(" "), /Google Analytics/);
+  assert.match(id.recipients.items.join(" "), /Google Analytics/);
+  assert.doesNotMatch(en.recipients.closing, /have not configured/);
+  assert.doesNotMatch(
+    id.recipients.closing,
+    /tidak mengonfigurasi SMS atau analitik/,
+  );
 });
 
 test("the accessibility statement stays candid and cites Indonesian law", () => {

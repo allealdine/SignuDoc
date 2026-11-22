@@ -2509,10 +2509,10 @@ export const enMessages = defineMessages({
         },
         cookies: {
           closing:
-            "Optional Vercel BotID processing applies only when that feature is enabled. You can clear these cookies and the local cache in your browser, although you may need to sign in again.",
+            "Analytics cookies are optional and can be blocked or removed in your browser without affecting access to the service; blocking them only removes usage statistics. Optional Vercel BotID processing applies only when that feature is enabled. You can clear the other cookies and the local cache in your browser, although you may need to sign in again.",
           heading: "8. Cookies, verification, and local storage",
           intro:
-            "We use cookies and browser storage only to operate and secure the service:",
+            "We use cookies and browser storage to operate and secure the service, and optional analytics to understand which public pages are useful:",
           items: [
             "better-auth.session_token — keeps you signed in for 7 days.",
             "better-auth.session_data and better-auth.account_data — short-lived authentication cache, valid for 5 minutes.",
@@ -2520,6 +2520,7 @@ export const enMessages = defineMessages({
             "sd_v_<token hash prefix> — verifies a signer after an access code, account check, or email code, valid for 8 hours.",
             "NEXT_LOCALE — remembers your language preference for 365 days. It is used only for language selection and can be read by scripts.",
             "IndexedDB signudoc-draft-preview-cache — caches draft PDF previews in your browser for up to 24 hours.",
+            "Google Tag Manager / Google Analytics — optional analytics on public pages only. It records page views and aggregate interactions, and receives no document contents, signer names, email addresses, or envelope tokens. Its cookies can be blocked or removed in your browser; see the opt-out tools at tools.google.com/dlpage/gaoptout.",
           ],
         },
         dataCategories: {
@@ -2596,11 +2597,17 @@ export const enMessages = defineMessages({
               purpose:
                 "Handling complaints, disputes, and requests from regulators or courts.",
             },
+            {
+              basis:
+                "Basis: legitimate interests in understanding how the public site is used; analytics cookies are optional.",
+              purpose:
+                "Measuring visits and interactions on public pages, without receiving document contents or signer data.",
+            },
           ],
         },
         recipients: {
           closing:
-            "We do not sell personal data, do not run an advertising business, and have not configured SMS messaging or third-party analytics in the hosted service. Where a provider processes data on our behalf, we use contractual arrangements as required by the PDP Law.",
+            "We do not sell personal data, do not run an advertising business, and do not configure SMS messaging. Google processes limited usage data that contains no document contents for the optional analytics described above. Where a provider processes data on our behalf, we use contractual arrangements as required by the PDP Law.",
           heading: "5. Recipients and service providers",
           intro:
             "We share personal data only with providers that need it to run Sakta, with participants in an envelope, or where the law requires it. The main recipients are:",
@@ -2615,6 +2622,7 @@ export const enMessages = defineMessages({
             "Your configured OIDC/SSO provider — receives authentication redirects and the openid, email, and profile scopes when you sign in that way.",
             "Webhook endpoints configured by your organization — receive envelope and signer event payloads chosen by the administrator.",
             "Optional log drain/SIEM providers — receive security and audit logs when enabled.",
+            "Google (Google Tag Manager and Google Analytics) — optional usage measurement on public pages; no document, signer, or envelope data is sent.",
           ],
         },
         requests: {

@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import { Inter, Plus_Jakarta_Sans } from "next/font/google";
+import { headers } from "next/headers";
 
+import { GoogleTagManager } from "@/components/analytics/google-tag-manager.tsx";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ANALYTICS_PATH_HEADER, isAnalyticsPath } from "@/lib/analytics.ts";
 import { SIGNUDOC_NAME } from "@/lib/branding.ts";
 import { getMessages } from "@/lib/i18n/messages.ts";
 import { MessagesProvider } from "@/lib/i18n/messages-provider.tsx";
@@ -59,12 +62,14 @@ export default async function RootLayout({
 }>) {
   const locale = await getRequestLocale();
   const messages = getMessages(locale);
+  const pathname = (await headers()).get(ANALYTICS_PATH_HEADER) ?? "/";
 
   return (
     <html lang={locale}>
       <body
         className={`${plusJakartaSans.variable} ${inter.variable} antialiased`}
       >
+        {isAnalyticsPath(pathname) ? <GoogleTagManager /> : null}
         <MessagesProvider locale={locale} messages={messages}>
           <TooltipProvider>{children}</TooltipProvider>
         </MessagesProvider>
