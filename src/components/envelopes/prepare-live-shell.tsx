@@ -1972,9 +1972,9 @@ function placeField(
     // Text, number and checkbox fields start optional; a dropdown or a
     // group of radio buttons is usually a question that needs an answer.
     required:
-      tool.type === "text" ||
-      tool.type === "number" ||
-      tool.type === "checkbox",
+      tool.type === "text" || tool.type === "number" || tool.type === "checkbox"
+        ? false
+        : true,
     signerId: selectedSignerId,
     type: tool.type,
   };
